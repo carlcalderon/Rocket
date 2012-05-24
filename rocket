@@ -1,0 +1,703 @@
+#!/usr/bin/env node
+/*!
+   ___           __       __
+  / _ \___  ____/ /_____ / /_
+ / , _/ _ \/ __/  '_/ -_) __/
+/_/|_|\___/\__/_/\_\\__/\__/
+
+Copyright 2012 Carl Calderon
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+var BUILD, COMPILERS, DOGTAG, EXEC_OPTIONS, FILE_ENCODING, FILE_SEPARATOR, MAJOR_VERSION, MINOR_VERSION, NOTATION, OPTIONS, REGEXP_ARGUMENT, REGEXP_LINK, REGEXP_NOTATION, REGEXP_SCRIPT, SEPARATOR, VERSION, allExist, appendFile, build, colors, compile, concatenate, configFile, cp, cpdir, crypto, customCompilers, cwd, data, dirname, exec, exist, extension, filename, files, folders, fs, inWatchMode, inputDirectory, isDirectory, md5, mergeObjects, mkdir, now, option, outputDirectory, parseBuild, parseBuildObject, parseConfig, parseNotation, paths, program, publishSchematic, read, relative, resolve, rocketPath, stderr, stdout, unlink, validateCompilers, verifyApproval, watchMode, wrench, write, _i, _len,
+  __slice = [].slice;
+
+program = require("./library/node_modules/commander");
+
+colors = require("./library/node_modules/colors");
+
+wrench = require("./library/node_modules/wrench");
+
+cp = require("child_process");
+
+crypto = require("crypto");
+
+paths = require("path");
+
+fs = require("fs");
+
+DOGTAG = "Rocket";
+
+MAJOR_VERSION = 0;
+
+MINOR_VERSION = 1;
+
+BUILD = 7;
+
+VERSION = [MAJOR_VERSION, MINOR_VERSION, BUILD].join(".");
+
+SEPARATOR = "/";
+
+FILE_SEPARATOR = "\r\n";
+
+FILE_ENCODING = "utf8";
+
+NOTATION = {
+  REPLACE: "replace",
+  REMOVE: "remove",
+  CONCAT: "concat",
+  MINIFY: "minify"
+};
+
+OPTIONS = [["-a, --approve", "automatically approve schematic", false], ["-s, --schematic", "view schematic", false], ["-w, --watch", "sets " + DOGTAG + " in watch mode", false]];
+
+EXEC_OPTIONS = {
+  env: process.env
+};
+
+COMPILERS = {
+  uglify: {
+    executable: "./library/node_modules/uglify-js/bin/uglifyjs",
+    "arguments": "{input}",
+    returnsOutput: true,
+    minifies: "js",
+    builtIn: true
+  },
+  yuicompressor: {
+    executable: "java -jar -Xss2048k ./library/compilers/yuicompressor-2.4.7.jar",
+    "arguments": "--type \"css\" {input}",
+    returnsOutput: true,
+    minifies: "css",
+    builtIn: true
+  },
+  coffeescript: {
+    executable: "./library/node_modules/coffee-script/bin/coffee",
+    "arguments": "-pc {input}",
+    returnsOutput: true,
+    extension: "coffee",
+    minifier: "uglify",
+    builtIn: true
+  },
+  less: {
+    executable: "./library/node_modules/less/bin/lessc",
+    "arguments": "{input}",
+    returnsOutput: true,
+    extension: "less",
+    minifier: "yuicompressor",
+    builtIn: true
+  }
+};
+
+REGEXP_NOTATION = function() {
+  return /<\!--\s?(rocket|sb):\s?([\S]+)\s?(\S*?)\s?-->([\s\S]*?)<\!--\s?end\s?-->/gm;
+};
+
+REGEXP_SCRIPT = function() {
+  return /script.+src="(.+)"/g;
+};
+
+REGEXP_LINK = function() {
+  return /link.+href="(.+)"/g;
+};
+
+REGEXP_ARGUMENT = function() {
+  return /\{([\w-]*?)\}/g;
+};
+
+cwd = process.cwd();
+
+data = null;
+
+files = [];
+
+folders = [];
+
+configFile = null;
+
+rocketPath = null;
+
+inWatchMode = false;
+
+customCompilers = [];
+
+outputDirectory = "deploy";
+
+inputDirectory = "source";
+
+filename = paths.basename;
+
+relative = paths.relative;
+
+resolve = paths.resolve;
+
+dirname = paths.dirname;
+
+unlink = fs.unlinkSync;
+
+stdout = console.log;
+
+exist = paths.existsSync;
+
+mkdir = fs.mkdirSync;
+
+cpdir = wrench.copyDirSyncRecursive;
+
+exec = cp.exec;
+
+now = function() {
+  return (new Date().toLocaleTimeString)();
+};
+
+md5 = function(string) {
+  return crypto.createHash("md5").update(string).digest("hex");
+};
+
+read = function(path) {
+  return fs.readFileSync(path, FILE_ENCODING);
+};
+
+write = function(path, content) {
+  return fs.writeFileSync(path, content, FILE_ENCODING);
+};
+
+extension = function(path) {
+  return path.substr(path.lastIndexOf(".") + 1);
+};
+
+isDirectory = function(path) {
+  return (fs.statSync(path)).isDirectory();
+};
+
+stderr = function() {
+  var code, message;
+  code = arguments[0], message = 2 <= arguments.length ? __slice.call(arguments, 1) : [];
+  message.unshift("ERR!".red);
+  stdout.apply(this, message);
+  return process.exit(code);
+};
+
+concatenate = function(list) {
+  var file, result, _i, _len;
+  result = "";
+  for (_i = 0, _len = list.length; _i < _len; _i++) {
+    file = list[_i];
+    result += read(file);
+  }
+  return result;
+};
+
+allExist = function(list) {
+  var item, _i, _len;
+  for (_i = 0, _len = list.length; _i < _len; _i++) {
+    item = list[_i];
+    if (exist(item === false)) {
+      return false;
+    }
+  }
+  return true;
+};
+
+mergeObjects = function() {
+  var key, object, result, value, _i, _len;
+  result = {};
+  for (_i = 0, _len = arguments.length; _i < _len; _i++) {
+    object = arguments[_i];
+    for (key in object) {
+      value = object[key];
+      result[key] = value;
+    }
+  }
+  return result;
+};
+
+parseConfig = function(path) {
+  var filepath;
+  rocketPath = dirname(resolve(cwd, process.argv[1]));
+  cwd = dirname(path);
+  filepath = resolve(".", path);
+  if (exist(filepath) && (path != null)) {
+    configFile = path;
+  } else {
+    stderr(1, "Configuration file does not exist.");
+  }
+  try {
+    data = JSON.parse(fs.readFileSync(filepath));
+  } catch (error) {
+    stderr(2, "Configuration error. Invalid JSON?");
+  }
+  if (data.base_dir != null) {
+    cwd = resolve(cwd, data.base_dir);
+  }
+  files = [];
+  folders = [];
+  outputDirectory = resolve(cwd, data.output_dir);
+  inputDirectory = resolve(cwd, data.input_dir);
+  customCompilers = data.compilers;
+  if (!exist(inputDirectory)) {
+    stderr(1, "Input directory does not exist");
+  }
+  validateCompilers(customCompilers);
+  parseBuild(data.build);
+};
+
+validateCompilers = function(list) {
+  var id, options;
+  for (id in list) {
+    options = list[id];
+    if (options.executable == null) {
+      stderr(3, "Compiler \"" + id + "\" is missing \"executable\" field.");
+    }
+  }
+};
+
+parseBuild = function(list) {
+  var object, _i, _len;
+  for (_i = 0, _len = list.length; _i < _len; _i++) {
+    object = list[_i];
+    parseBuildObject(object);
+  }
+};
+
+parseBuildObject = function(object, append) {
+  var input, source, sourcePath, targetPath, _i, _len, _ref;
+  if (append == null) {
+    append = true;
+  }
+  if (typeof object === "string") {
+    sourcePath = resolve(inputDirectory, object);
+    targetPath = resolve(outputDirectory, object);
+    if (!exist(sourcePath)) {
+      stderr(4, "Parse error\n" + sourcePath + " does not exist.");
+    }
+    if (isDirectory(sourcePath)) {
+      if (append === true) {
+        folders.push({
+          output: targetPath,
+          input: [sourcePath]
+        });
+      }
+    } else {
+      parseNotation(read(sourcePath));
+      if (append === true) {
+        files.push({
+          output: targetPath,
+          input: [sourcePath],
+          minify: false
+        });
+      }
+    }
+  } else {
+    object.output = resolve(outputDirectory, object.output);
+    input = [];
+    if (typeof object.input === "string") {
+      object.input = [object.input];
+    }
+    _ref = object.input;
+    for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+      source = _ref[_i];
+      sourcePath = resolve(inputDirectory, source);
+      if (!exist(sourcePath)) {
+        stderr(1, "" + source + " does not exist.");
+      }
+      if (!isDirectory(sourcePath)) {
+        parseNotation(read(sourcePath));
+      }
+      input.push(sourcePath);
+    }
+    object.input = input;
+    if (append === true) {
+      if (isDirectory(input[0])) {
+        folders.push(object);
+      } else {
+        files.push(object);
+      }
+    }
+  }
+};
+
+parseNotation = function(string) {
+  var action, all, block, link, links, markup, match, result, script, scripts, sources, target, type, _i, _j, _len, _len1;
+  result = string;
+  while ((match = REGEXP_NOTATION().exec(result)) != null) {
+    all = match[0], type = match[1], action = match[2], target = match[3], block = match[4];
+    markup = "";
+    switch (action) {
+      case NOTATION.REMOVE:
+        markup = "";
+        break;
+      default:
+        scripts = block.match(REGEXP_SCRIPT());
+        links = block.match(REGEXP_LINK());
+        sources = [];
+        if (scripts != null) {
+          for (_i = 0, _len = scripts.length; _i < _len; _i++) {
+            script = scripts[_i];
+            sources.push(resolve(inputDirectory, ((REGEXP_SCRIPT()).exec(script))[1]));
+          }
+          markup = "<script type=\"text/javascript\" src=\"" + target + "\"></script>";
+        }
+        if (links != null) {
+          for (_j = 0, _len1 = links.length; _j < _len1; _j++) {
+            link = links[_j];
+            sources.push(resolve(inputDirectory, ((REGEXP_LINK()).exec(link))[1]));
+          }
+          markup = "<link rel=\"stylesheet\" type=\"text/css\" href=\"" + target + "\">";
+        }
+        appendFile({
+          minify: action === NOTATION.MINIFY,
+          output: resolve(outputDirectory, target),
+          input: sources
+        });
+    }
+    result = result.replace(all, markup);
+  }
+  return result;
+};
+
+appendFile = function(buildObject) {
+  var file, source, _i, _j, _len, _len1, _ref;
+  for (_i = 0, _len = files.length; _i < _len; _i++) {
+    file = files[_i];
+    if (file.output === buildObject.output) {
+      _ref = buildObject.input;
+      for (_j = 0, _len1 = _ref.length; _j < _len1; _j++) {
+        source = _ref[_j];
+        if (!((file.input.indexOf(resolve(inputDirectory, source))) > -1)) {
+          file.input.push(source);
+        }
+        parseBuildObject(file, false);
+      }
+      return;
+    }
+  }
+  parseBuildObject(buildObject);
+};
+
+publishSchematic = function() {
+  var file, folder, inputFile, inputFolder, _i, _j, _k, _l, _len, _len1, _len2, _len3, _ref, _ref1;
+  stdout("\nSchematic:\n".bold);
+  stdout("\toutput directory: " + outputDirectory);
+  stdout("\tinput directory: " + inputDirectory);
+  if (files.length !== 0) {
+    stdout("\n\tFiles:\n".bold);
+  }
+  for (_i = 0, _len = files.length; _i < _len; _i++) {
+    file = files[_i];
+    stdout("\t\t" + (relative(cwd, file.output)).green);
+    _ref = file.input;
+    for (_j = 0, _len1 = _ref.length; _j < _len1; _j++) {
+      inputFile = _ref[_j];
+      stdout("\t\t\t" + relative(cwd, inputFile));
+    }
+  }
+  if (folders.length !== 0) {
+    stdout("\n\tFolders:\n".bold);
+  }
+  for (_k = 0, _len2 = folders.length; _k < _len2; _k++) {
+    folder = folders[_k];
+    stdout("\t\t" + (relative(cwd, folder.output)).green);
+    _ref1 = folder.input;
+    for (_l = 0, _len3 = _ref1.length; _l < _len3; _l++) {
+      inputFolder = _ref1[_l];
+      stdout("\t\t\t" + relative(cwd, inputFolder));
+    }
+  }
+  stdout("");
+};
+
+verifyApproval = function(message, success) {
+  program.confirm("\n" + message + " [y/n]: ", function(result) {
+    if (result !== true) {
+      process.exit(0);
+    }
+    if (success != null) {
+      return success();
+    }
+  });
+};
+
+build = function() {
+  var f, file, folder, folderList, i, next, proceed, relativePath, result, source, sourceFolder, target, tree, _i, _j, _k, _l, _len, _len1, _len2, _len3, _len4, _len5, _m, _n, _ref;
+  stdout("\nBuild:\n".bold);
+  folderList = folders.slice(0);
+  for (_i = 0, _len = files.length; _i < _len; _i++) {
+    file = files[_i];
+    folderList.push({
+      output: file.output.split(SEPARATOR).slice(0, -1).join(SEPARATOR)
+    });
+  }
+  for (_j = 0, _len1 = folderList.length; _j < _len1; _j++) {
+    folder = folderList[_j];
+    relativePath = relative(process.cwd(), folder.output);
+    tree = relativePath.split(SEPARATOR);
+    result = [];
+    for (i = _k = 0, _len2 = tree.length; _k < _len2; i = ++_k) {
+      f = tree[i];
+      result[i] = tree.slice(0, i + 1).join(SEPARATOR);
+    }
+    for (_l = 0, _len3 = result.length; _l < _len3; _l++) {
+      f = result[_l];
+      if (!(f === ".." || f === "")) {
+        if (!exist(f)) {
+          mkdir(f);
+        }
+      }
+    }
+  }
+  if (folders.length !== 0) {
+    stdout("\tFolders:\n".bold);
+  }
+  for (_m = 0, _len4 = folders.length; _m < _len4; _m++) {
+    folder = folders[_m];
+    target = resolve(cwd, folder.output);
+    _ref = folder.input;
+    for (_n = 0, _len5 = _ref.length; _n < _len5; _n++) {
+      sourceFolder = _ref[_n];
+      source = resolve(cwd, sourceFolder);
+      cpdir(source, target, {
+        preserve: true
+      });
+    }
+    stdout("\t\t" + "+".green.inverse + " " + relative(cwd, target));
+  }
+  if (files.length !== 0) {
+    stdout("\tFiles:\n".bold);
+  }
+  i = 0;
+  next = function() {
+    file = files[i];
+    stdout("\t\t" + "+".green.inverse + " " + relative(cwd, file.output));
+    return compile(file, function(result) {
+      if (result !== null) {
+        write(file.output, result);
+      }
+      if (++i === files.length) {
+        return proceed();
+      } else {
+        return next();
+      }
+    });
+  };
+  next();
+  proceed = function() {
+    if (program.watch === true) {
+      watchMode();
+      return stdout("\n" + ("[" + now() + "]").grey + " Complete");
+    } else {
+      stdout("Complete");
+      return process.exit(0);
+    }
+  };
+};
+
+compile = function(buildObject, callback) {
+  var args, compiler, compilerList, complete, contents, execPath, execution, field, file, key, minify, sourcePath, tempFile, value, watchers, _i, _j, _len, _len1, _ref, _ref1;
+  if (buildObject.compiler != null) {
+    compiler = customCompilers[buildObject.compiler];
+  } else {
+    compilerList = mergeObjects(COMPILERS, customCompilers);
+    for (key in compilerList) {
+      value = compilerList[key];
+      if (value.extension === extension(buildObject.input[0])) {
+        compiler = compilerList[key];
+      }
+      if (compiler != null) {
+        break;
+      }
+    }
+  }
+  minify = function(inputPath, buildObject, compressor, callback) {
+    var args, compressorList, execPath, execution, field, id;
+    if (!(compressor != null)) {
+      compressorList = mergeObjects(COMPILERS, customCompilers);
+      for (id in compressorList) {
+        compiler = compressorList[id];
+        if (extension(buildObject.output) === compiler.minifies) {
+          compressor = compiler;
+        }
+        if (compressor != null) {
+          break;
+        }
+      }
+    }
+    args = compressor["arguments"];
+    args = args.replace("{input}", inputPath);
+    args = args.replace("{output}", buildObject.output);
+    while (field = (REGEXP_ARGUMENT()).exec(args)) {
+      value = buildObject[field[1]];
+      args = args.replace(field[0], value || "");
+    }
+    execPath = compressor.executable;
+    if (compressor.builtIn === true) {
+      execPath = resolve(rocketPath, compressor.executable);
+    }
+    execution = execPath + " " + args;
+    exec(execution, EXEC_OPTIONS, function(error, result, err) {
+      if (result != null) {
+        if (compressor.returnsOutput === true) {
+          return callback(result);
+        } else {
+          return callback(null);
+        }
+      } else if (err != null) {
+        return stderr(5, err);
+      }
+    });
+  };
+  complete = function(result) {
+    if (result == null) {
+      result = null;
+    }
+    unlink(tempFile);
+    callback(result);
+  };
+  contents = "";
+  _ref = buildObject.input;
+  for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+    file = _ref[_i];
+    contents += parseNotation(read(file)) + FILE_SEPARATOR;
+  }
+  tempFile = "/tmp/" + filename(buildObject.input[0]);
+  write(tempFile, contents);
+  if (compiler != null) {
+    if (compiler.returnsOutput == null) {
+      compiler.returnsOutput = compiler["arguments"].indexOf("{output}") > -1;
+    }
+    args = compiler["arguments"];
+    args = args.replace("{input}", "\"" + tempFile + "\"");
+    args = args.replace("{output}", "\"" + buildObject.output + "\"");
+    while (field = (REGEXP_ARGUMENT()).exec(args)) {
+      value = buildObject[field[1]];
+      args = args.replace(field[0], value || "");
+    }
+    execPath = compiler.executable;
+    if (compiler.builtIn === true) {
+      execPath = resolve(rocketPath, compiler.executable);
+    }
+    execution = execPath + " " + args;
+    exec(execution, EXEC_OPTIONS, function(error, result, err) {
+      var compressor;
+      if (error != null) {
+        stderr(6, err);
+      }
+      if ((result != null) && result !== "") {
+        if (compiler.returnsOutput === true) {
+          if (buildObject.minify === true) {
+            write(tempFile, result);
+            compressor = compiler.minifier != null ? COMPILERS[compiler.minifier] : null;
+            return minify(tempFile, buildObject, compressor, function(compressed) {
+              return complete(compressed);
+            });
+          } else {
+            return complete(result);
+          }
+        } else {
+          return complete(null);
+        }
+      } else {
+        return complete(null);
+      }
+    });
+  } else {
+    if (buildObject.minify === true) {
+      minify(tempFile, buildObject, null, function(compressed) {
+        return complete(compressed);
+      });
+    } else {
+      complete(contents);
+    }
+  }
+  if (program.watch === true) {
+    watchers = [];
+    _ref1 = buildObject.input;
+    for (_j = 0, _len1 = _ref1.length; _j < _len1; _j++) {
+      sourcePath = _ref1[_j];
+      watchers.push(fs.watch(sourcePath, function(event, filename) {
+        var watcher, _k, _len2;
+        for (_k = 0, _len2 = watchers.length; _k < _len2; _k++) {
+          watcher = watchers[_k];
+          watcher.close();
+        }
+        return compile(buildObject, function(result) {
+          if (result !== null) {
+            write(buildObject.output, result);
+          }
+          return stdout(("[" + now() + "]").grey + " Compiled " + relative(cwd, buildObject.output).bold);
+        });
+      }));
+    }
+  }
+};
+
+watchMode = function() {
+  var buildObject, sourcePath, watchFolder, _i, _j, _len, _len1, _ref;
+  if (inWatchMode !== true) {
+    stdout("Entering watch mode... (Abort using CTRL+C)");
+    fs.watch(configFile, function() {
+      stdout(("[" + now() + "]").grey + " Config changed");
+      parseConfig(configFile);
+      return build();
+    });
+  }
+  inWatchMode = true;
+  for (_i = 0, _len = folders.length; _i < _len; _i++) {
+    buildObject = folders[_i];
+    _ref = buildObject.input;
+    for (_j = 0, _len1 = _ref.length; _j < _len1; _j++) {
+      sourcePath = _ref[_j];
+      watchFolder = function(sourcePath, object) {
+        return fs.watch(sourcePath, function(event, folder) {
+          stdout(("[" + now() + "]").grey + " Folder updated: " + relative(cwd, object.output).bold);
+          return cpdir(sourcePath, object.output, {
+            preserve: true
+          });
+        });
+      };
+      watchFolder(sourcePath, buildObject);
+    }
+  }
+};
+
+stdout("" + DOGTAG + " " + VERSION);
+
+program.usage("[options] <configuration file>");
+
+for (_i = 0, _len = OPTIONS.length; _i < _len; _i++) {
+  option = OPTIONS[_i];
+  program.option.apply(program, option);
+}
+
+program.parse(process.argv);
+
+if ((program.args != null) && (program.args[0] != null)) {
+  parseConfig(program.args[0]);
+} else {
+  stdout("No config specified.");
+  stdout(program.helpInformation());
+  process.exit(1);
+}
+
+if (program.schematic === true) {
+  publishSchematic();
+  process.exit(0);
+}
+
+if (program.approve !== true) {
+  if (program.schematic !== true) {
+    publishSchematic();
+  }
+  verifyApproval("Are you sure?", build);
+} else {
+  build();
+}
