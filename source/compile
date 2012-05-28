@@ -1,0 +1,36 @@
+#!/usr/bin/env node
+
+/*
+    Only reason Rocket isn't compiled with Rocket
+    is that overwriting the currently running
+    process breaks the build and would make
+    compilation process an unnecessary pain when
+    compiling rocket and running the compiled
+    source from the same path.
+
+    Rocket inception is possible, but just not
+    handy in this case.
+*/
+
+var RUNTIME               = "#!/usr/bin/env node",
+    ENVIRONMENT_VARIABLES = process.env,
+    DEPLOY_DIRECTORY      = "../deploy",
+    TARGET                = DEPLOY_DIRECTORY + "/rocket",
+
+    exec     = require("child_process").exec,
+    write    = require("fs").writeFileSync,
+    resolve  = require("path").resolve;
+
+exec('./library/node_modules/coffee-script/bin/coffee -pcb rocket.coffee', ENVIRONMENT_VARIABLES, function(error, stdout, stderr) {
+
+    if (!stderr) {
+        write(TARGET, RUNTIME + "\n" + stdout.substr(stdout.indexOf("\n")+1));
+        exec("cp -R \"" + resolve("./library/") + "\" \"" + resolve(DEPLOY_DIRECTORY) + "\"", ENVIRONMENT_VARIABLES, function() {
+            console.log("complete");
+        });
+    } else {
+        console.log(stderr);
+        process.exit(1);
+    }
+
+});

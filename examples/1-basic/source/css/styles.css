@@ -1,0 +1,13 @@
+body {
+	text-align: center;
+    font: 1em Arial, sans-serif;
+}
+
+#info {
+	border-radius: 10px;
+	background: #ddd;
+	padding: 20px;
+    margin: 30px auto;
+    height: auto;
+    width: 400px;
+}

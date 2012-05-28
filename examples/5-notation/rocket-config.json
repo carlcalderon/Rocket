@@ -1,0 +1,8 @@
+{
+    "output_dir": "deploy",
+    "input_dir": "source",
+    "build": [
+        "images",
+        "index.html"
+    ]
+}
