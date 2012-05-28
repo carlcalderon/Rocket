@@ -43,7 +43,7 @@ MAJOR_VERSION = 0;
 
 MINOR_VERSION = 1;
 
-BUILD = 8;
+BUILD = 9;
 
 VERSION = [MAJOR_VERSION, MINOR_VERSION, BUILD].join(".");
 
@@ -230,10 +230,11 @@ mergeObjects = function() {
 
 parseConfig = function(path) {
   var filepath;
-  rocketPath = dirname(resolve(cwd, process.argv[1]));
+  rocketPath = resolve(cwd, process.argv[1]);
   if (fs.lstatSync(rocketPath).isSymbolicLink() === true) {
     rocketPath = fs.readlinkSync(rocketPath);
   }
+  rocketPath = dirname(rocketPath);
   cwd = dirname(path);
   filepath = resolve(".", path);
   if (exist(filepath) && (path != null)) {
