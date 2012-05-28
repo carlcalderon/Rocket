@@ -43,7 +43,7 @@ MAJOR_VERSION = 0;
 
 MINOR_VERSION = 1;
 
-BUILD = 7;
+BUILD = 8;
 
 VERSION = [MAJOR_VERSION, MINOR_VERSION, BUILD].join(".");
 
@@ -60,7 +60,7 @@ NOTATION = {
   MINIFY: "minify"
 };
 
-OPTIONS = [["-a, --approve", "automatically approve schematic", false], ["-s, --schematic", "view schematic", false], ["-w, --watch", "sets " + DOGTAG + " in watch mode", false]];
+OPTIONS = [["-a, --approve", "automatically approve schematic", false], ["-s, --schematic", "view schematic", false], ["-w, --watch", "sets " + DOGTAG + " in watch mode", false], ["-u, --update", "updates " + DOGTAG + " to the latest version.", false]];
 
 EXEC_OPTIONS = {
   env: process.env
@@ -75,10 +75,17 @@ COMPILERS = {
     builtIn: true
   },
   yuicompressor: {
-    executable: "java -jar -Xss2048k ./library/compilers/yuicompressor-2.4.7.jar",
+    executable: "java -jar -Xss2048k ./library/compilers/yuicompressor/yuicompressor-2.4.7.jar",
     "arguments": "--type \"css\" {input}",
     returnsOutput: true,
     minifies: "css",
+    builtIn: true
+  },
+  closure: {
+    executable: "java -jar ./library/compilers/google_closure/compiler.jar",
+    "arguments": "{input}",
+    returnsOutput: true,
+    minifier: "uglify",
     builtIn: true
   },
   coffeescript: {
@@ -103,16 +110,16 @@ REGEXP_NOTATION = function() {
   return /<\!--\s?(rocket|sb):\s?([\S]+)\s?(\S*?)\s?-->([\s\S]*?)<\!--\s?end\s?-->/gm;
 };
 
+REGEXP_ARGUMENT = function() {
+  return /\{([\w-]*?)\}/g;
+};
+
 REGEXP_SCRIPT = function() {
   return /script.+src="(.+)"/g;
 };
 
 REGEXP_LINK = function() {
   return /link.+href="(.+)"/g;
-};
-
-REGEXP_ARGUMENT = function() {
-  return /\{([\w-]*?)\}/g;
 };
 
 cwd = process.cwd();
@@ -224,6 +231,9 @@ mergeObjects = function() {
 parseConfig = function(path) {
   var filepath;
   rocketPath = dirname(resolve(cwd, process.argv[1]));
+  if (fs.lstatSync(rocketPath).isSymbolicLink() === true) {
+    rocketPath = readlinkSync(rocketPath);
+  }
   cwd = dirname(path);
   filepath = resolve(".", path);
   if (exist(filepath) && (path != null)) {
@@ -588,8 +598,12 @@ compile = function(buildObject, callback) {
     execution = execPath + " " + args;
     exec(execution, EXEC_OPTIONS, function(error, result, err) {
       var compressor;
-      if (error != null) {
-        stderr(6, err);
+      if (!inWatchMode) {
+        if (error != null) {
+          stderr(6, err);
+        }
+      } else {
+        stdout("ERR! ".red + err);
       }
       if ((result != null) && result !== "") {
         if (compiler.returnsOutput === true) {
@@ -669,9 +683,9 @@ watchMode = function() {
   }
 };
 
-stdout("" + DOGTAG + " " + VERSION);
-
 program.usage("[options] <configuration file>");
+
+program.version(VERSION);
 
 for (_i = 0, _len = OPTIONS.length; _i < _len; _i++) {
   option = OPTIONS[_i];
@@ -680,24 +694,32 @@ for (_i = 0, _len = OPTIONS.length; _i < _len; _i++) {
 
 program.parse(process.argv);
 
-if ((program.args != null) && (program.args[0] != null)) {
-  parseConfig(program.args[0]);
+stdout("" + DOGTAG + " " + VERSION);
+
+if (program.update === true) {
+  exec(UPDATE_EXEC, function(error, result, err) {
+    if (error != null) {
+      return stderr(6, err);
+    } else {
+      return stdout("Update successful.");
+    }
+  });
 } else {
-  stdout("No config specified.");
-  stdout(program.helpInformation());
-  process.exit(1);
-}
-
-if (program.schematic === true) {
-  publishSchematic();
-  process.exit(0);
-}
-
-if (program.approve !== true) {
-  if (program.schematic !== true) {
-    publishSchematic();
+  if ((program.args != null) && (program.args[0] != null)) {
+    parseConfig(program.args[0]);
+  } else {
+    stderr(1, "No config specified.");
   }
-  verifyApproval("Are you sure?", build);
-} else {
-  build();
+  if (program.schematic === true) {
+    publishSchematic();
+    process.exit(0);
+  }
+  if (program.approve !== true) {
+    if (program.schematic !== true) {
+      publishSchematic();
+    }
+    verifyApproval("Are you sure?", build);
+  } else {
+    build();
+  }
 }
