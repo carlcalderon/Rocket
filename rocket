@@ -232,7 +232,7 @@ parseConfig = function(path) {
   var filepath;
   rocketPath = dirname(resolve(cwd, process.argv[1]));
   if (fs.lstatSync(rocketPath).isSymbolicLink() === true) {
-    rocketPath = readlinkSync(rocketPath);
+    rocketPath = fs.readlinkSync(rocketPath);
   }
   cwd = dirname(path);
   filepath = resolve(".", path);
