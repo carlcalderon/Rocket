@@ -20,7 +20,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-var BUILD, COMPILERS, DOGTAG, EXEC_OPTIONS, FILE_ENCODING, FILE_SEPARATOR, MAJOR_VERSION, MINOR_VERSION, NOTATION, OPTIONS, REGEXP_ARGUMENT, REGEXP_LINK, REGEXP_NOTATION, REGEXP_SCRIPT, SEPARATOR, VERSION, allExist, appendFile, build, colors, compile, concatenate, configFile, cp, cpdir, crypto, customCompilers, cwd, data, dirname, exec, exist, extension, filename, files, folders, fs, inWatchMode, inputDirectory, isDirectory, md5, mergeObjects, mkdir, now, option, outputDirectory, parseBuild, parseBuildObject, parseConfig, parseNotation, paths, program, publishSchematic, read, relative, resolve, rocketPath, stderr, stdout, unlink, validateCompilers, verifyApproval, watchMode, wrench, write, _i, _len,
+var BUILD, COMPILERS, DEFAULT_CONFIG_NAME, DOGTAG, EXEC_OPTIONS, FILE_ENCODING, FILE_SEPARATOR, MAJOR_VERSION, MINOR_VERSION, NOTATION, OPTIONS, REGEXP_ARGUMENT, REGEXP_LINK, REGEXP_NOTATION, REGEXP_SCRIPT, SEPARATOR, UPDATE_EXEC, VERSION, allExist, appendFile, build, colors, compile, concatenate, configFile, cp, cpdir, crypto, customCompilers, cwd, data, dirname, exec, exist, extension, filename, files, folders, fs, inWatchMode, inputDirectory, isDirectory, md5, mergeObjects, mkdir, now, option, outputDirectory, parseBuild, parseBuildObject, parseConfig, parseNotation, paths, program, publishSchematic, read, relative, resolve, rocketPath, stderr, stdout, unlink, validateCompilers, verifyApproval, watchMode, wrench, write, _i, _len,
   __slice = [].slice;
 
 program = require("./library/node_modules/commander");
@@ -43,7 +43,7 @@ MAJOR_VERSION = 0;
 
 MINOR_VERSION = 1;
 
-BUILD = 9;
+BUILD = 10;
 
 VERSION = [MAJOR_VERSION, MINOR_VERSION, BUILD].join(".");
 
@@ -52,6 +52,10 @@ SEPARATOR = "/";
 FILE_SEPARATOR = "\r\n";
 
 FILE_ENCODING = "utf8";
+
+DEFAULT_CONFIG_NAME = "rocket-config.json";
+
+UPDATE_EXEC = "cd /usr/local/lib/rocket/; sudo git pull -f";
 
 NOTATION = {
   REPLACE: "replace",
@@ -235,13 +239,16 @@ parseConfig = function(path) {
     rocketPath = fs.readlinkSync(rocketPath);
   }
   rocketPath = dirname(rocketPath);
-  cwd = dirname(path);
   filepath = resolve(".", path);
-  if (exist(filepath) && (path != null)) {
-    configFile = path;
+  if (isDirectory(filepath) === true) {
+    filepath = resolve(filepath, DEFAULT_CONFIG_NAME);
+  }
+  if (exist(filepath) === true) {
+    configFile = filepath;
   } else {
     stderr(1, "Configuration file does not exist.");
   }
+  cwd = dirname(filepath);
   try {
     data = JSON.parse(fs.readFileSync(filepath));
   } catch (error) {
@@ -256,7 +263,7 @@ parseConfig = function(path) {
   inputDirectory = resolve(cwd, data.input_dir);
   customCompilers = data.compilers;
   if (!exist(inputDirectory)) {
-    stderr(1, "Input directory does not exist");
+    stderr(1, "Input directory does not exist.");
   }
   validateCompilers(customCompilers);
   parseBuild(data.build);
@@ -709,7 +716,7 @@ if (program.update === true) {
   if ((program.args != null) && (program.args[0] != null)) {
     parseConfig(program.args[0]);
   } else {
-    stderr(1, "No config specified.");
+    parseConfig(resolve(cwd, DEFAULT_CONFIG_NAME));
   }
   if (program.schematic === true) {
     publishSchematic();

@@ -33,14 +33,16 @@ fs      = require "fs"
 # ##################################################
 # CONSTANTS
 # ##################################################
-DOGTAG         = "Rocket"
-MAJOR_VERSION  = 0
-MINOR_VERSION  = 1
-BUILD          = 9
-VERSION        = [MAJOR_VERSION, MINOR_VERSION, BUILD].join "."
-SEPARATOR      = "/"
-FILE_SEPARATOR = "\r\n"
-FILE_ENCODING  = "utf8"
+DOGTAG              = "Rocket"
+MAJOR_VERSION       = 0
+MINOR_VERSION       = 1
+BUILD               = 10
+VERSION             = [MAJOR_VERSION, MINOR_VERSION, BUILD].join "."
+SEPARATOR           = "/"
+FILE_SEPARATOR      = "\r\n"
+FILE_ENCODING       = "utf8"
+DEFAULT_CONFIG_NAME = "rocket-config.json"
+UPDATE_EXEC         = "cd /usr/local/lib/rocket/; sudo git pull -f"
 NOTATION =
     REPLACE: "replace"
     REMOVE:  "remove"
@@ -179,19 +181,23 @@ parseConfig = (path) ->
         rocketPath = fs.readlinkSync rocketPath
     rocketPath = dirname rocketPath
 
-    # Reset the current working directory to the
-    # path where the config file is located.
-    # All execution originate from that path.
-    cwd = dirname path
-
     # Resolve config path making it absolute
     filepath = resolve ".", path
 
+    # If the target is a directory, locate the config file.
+    if isDirectory(filepath) is yes
+        filepath = resolve filepath, DEFAULT_CONFIG_NAME
+
     # Read the contents of the configuration
-    if exist(filepath) and path?
-        configFile = path
+    if exist(filepath) is yes
+        configFile = filepath
     else
         stderr 1, "Configuration file does not exist."
+
+    # Reset the current working directory to the
+    # path where the config file is located.
+    # All execution originate from that path.
+    cwd = dirname filepath
 
     # Convert it to JSON
     try
@@ -212,7 +218,7 @@ parseConfig = (path) ->
     customCompilers = data.compilers
 
     # Make sure the input directory is valid
-    stderr 1, "Input directory does not exist" unless exist inputDirectory
+    stderr 1, "Input directory does not exist." unless exist inputDirectory
 
     # Validate compilers
     validateCompilers customCompilers
@@ -570,8 +576,10 @@ if program.update is yes
 else
 
     # Parse the specified config
-    if program.args? and program.args[0]? then parseConfig program.args[0] else
-        stderr 1, "No config specified."
+    if program.args? and program.args[0]?
+        parseConfig program.args[0]
+    else
+        parseConfig resolve cwd, DEFAULT_CONFIG_NAME
 
     # Schematic
     if program.schematic is yes
