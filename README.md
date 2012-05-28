@@ -4,7 +4,7 @@ The way it should be.
 
 ## What is Rocket?
 
-Rocket is a [node.js][nodejs] based universial compiler/builder/minifier for frontend developers (not exclusivly). Rocket is similar to [CodeKit][greedy] and [Springboard][springboard] but includes only the good stuff from both (and some others).
+Rocket is a [node.js][nodejs] based universial compiler/builder/minifier for frontend developers (not exclusivly). Rocket is similar to [CodeKit][codekit] and [Springboard][springboard] but includes only the good stuff from both (and some others).
 
 ## Install
 
@@ -323,7 +323,7 @@ Carl Calderon: [@carlcalderon][twitter]
 Licensed under the [Apache License, Version 2.0][apache]
 
 [nodejs]: http://nodejs.org/
-[greedy]: http://incident57.com/codekit/
+[codekit]: http://incident57.com/codekit/
 [springboard]: https://github.com/soulwire/Springboard
 [twitter]: http://twitter.com/carlcalderon
 [apache]: http://www.apache.org/licenses/LICENSE-2.0
