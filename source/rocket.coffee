@@ -134,7 +134,6 @@ resolve     = paths.resolve
 dirname     = paths.dirname
 unlink      = fs.unlinkSync
 stdout      = console.log
-exist       = paths.existsSync
 mkdir       = fs.mkdirSync
 cpdir       = wrench.copyDirSyncRecursive
 exec        = cp.exec
@@ -154,6 +153,15 @@ concatenate = (list) ->
 
     result = ""
     result += read file for file in list
+
+    return result
+
+exist       = (path, created = false) ->
+
+    result = paths.existsSync
+
+    if result is no and created is yes
+        result = yes if file.output is path for file in files
 
     return result
 
@@ -189,7 +197,7 @@ parseConfig = (path) ->
         filepath = resolve filepath, DEFAULT_CONFIG_NAME
 
     # Read the contents of the configuration
-    if exist(filepath) is yes
+    if exist filepath, yes is yes
         configFile = filepath
     else
         stderr 1, "Configuration file does not exist."
@@ -218,7 +226,7 @@ parseConfig = (path) ->
     customCompilers = data.compilers
 
     # Make sure the input directory is valid
-    stderr 1, "Input directory does not exist." unless exist inputDirectory
+    stderr 1, "Input directory does not exist." unless exist inputDirectory, yes
 
     # Validate compilers
     validateCompilers customCompilers
@@ -253,7 +261,7 @@ parseBuildObject = (object, append = yes) ->
         targetPath = resolve outputDirectory, object
 
         # Make sure path is valid
-        unless exist sourcePath
+        unless exist sourcePath, true
             stderr 4, "Parse error\n#{sourcePath} does not exist."
 
         # Add directory to folders list
@@ -277,7 +285,7 @@ parseBuildObject = (object, append = yes) ->
         if typeof object.input is "string" then object.input = [object.input]
         for source in object.input
             sourcePath = resolve inputDirectory, source
-            stderr 1, "#{source} does not exist." if not exist sourcePath
+            stderr 1, "#{source} does not exist." if not exist sourcePath, true
             parseNotation read sourcePath unless isDirectory sourcePath
             input.push sourcePath
         object.input = input

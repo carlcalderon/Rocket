@@ -158,8 +158,6 @@ unlink = fs.unlinkSync;
 
 stdout = console.log;
 
-exist = paths.existsSync;
-
 mkdir = fs.mkdirSync;
 
 cpdir = wrench.copyDirSyncRecursive;
@@ -208,6 +206,28 @@ concatenate = function(list) {
   return result;
 };
 
+exist = function(path, created) {
+  var file, result;
+  if (created == null) {
+    created = false;
+  }
+  result = paths.existsSync;
+  if (result === false && created === true) {
+    if ((function() {
+      var _i, _len, _results;
+      _results = [];
+      for (_i = 0, _len = files.length; _i < _len; _i++) {
+        file = files[_i];
+        _results.push(file.output === path);
+      }
+      return _results;
+    })()) {
+      result = true;
+    }
+  }
+  return result;
+};
+
 allExist = function(list) {
   var item, _i, _len;
   for (_i = 0, _len = list.length; _i < _len; _i++) {
@@ -243,7 +263,7 @@ parseConfig = function(path) {
   if (isDirectory(filepath) === true) {
     filepath = resolve(filepath, DEFAULT_CONFIG_NAME);
   }
-  if (exist(filepath) === true) {
+  if (exist(filepath, true === true)) {
     configFile = filepath;
   } else {
     stderr(1, "Configuration file does not exist.");
@@ -262,7 +282,7 @@ parseConfig = function(path) {
   outputDirectory = resolve(cwd, data.output_dir);
   inputDirectory = resolve(cwd, data.input_dir);
   customCompilers = data.compilers;
-  if (!exist(inputDirectory)) {
+  if (!exist(inputDirectory, true)) {
     stderr(1, "Input directory does not exist.");
   }
   validateCompilers(customCompilers);
@@ -295,7 +315,7 @@ parseBuildObject = function(object, append) {
   if (typeof object === "string") {
     sourcePath = resolve(inputDirectory, object);
     targetPath = resolve(outputDirectory, object);
-    if (!exist(sourcePath)) {
+    if (!exist(sourcePath, true)) {
       stderr(4, "Parse error\n" + sourcePath + " does not exist.");
     }
     if (isDirectory(sourcePath)) {
@@ -325,7 +345,7 @@ parseBuildObject = function(object, append) {
     for (_i = 0, _len = _ref.length; _i < _len; _i++) {
       source = _ref[_i];
       sourcePath = resolve(inputDirectory, source);
-      if (!exist(sourcePath)) {
+      if (!exist(sourcePath, true)) {
         stderr(1, "" + source + " does not exist.");
       }
       if (!isDirectory(sourcePath)) {
