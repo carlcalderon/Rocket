@@ -20,7 +20,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-var BUILD, COMPILERS, DEFAULT_CONFIG_NAME, DOGTAG, EXEC_OPTIONS, FILE_ENCODING, FILE_SEPARATOR, MAJOR_VERSION, MINOR_VERSION, NOTATION, OPTIONS, REGEXP_ARGUMENT, REGEXP_LINK, REGEXP_NOTATION, REGEXP_SCRIPT, SEPARATOR, UPDATE_EXEC, VERSION, allExist, appendFile, build, colors, compile, concatenate, configFile, cp, cpdir, crypto, customCompilers, cwd, data, dirname, exec, exist, extension, filename, files, folders, fs, inWatchMode, inputDirectory, isDirectory, md5, mergeObjects, mkdir, now, option, outputDirectory, parseBuild, parseBuildObject, parseConfig, parseNotation, paths, program, publishSchematic, read, relative, resolve, rocketPath, stderr, stdout, unlink, validateCompilers, verifyApproval, watchMode, wrench, write, _i, _len,
+var BUILD, COMPILERS, DEFAULT_CONFIG_NAME, DOGTAG, EXEC_OPTIONS, FILE_ENCODING, FILE_SEPARATOR, MAJOR_VERSION, MINOR_VERSION, NOTATION, OPTIONS, REGEXP_ARGUMENT, REGEXP_LINK, REGEXP_NOTATION, REGEXP_SCRIPT, REGEXP_TRIM, SEPARATOR, UPDATE_EXEC, VERSION, allExist, appendFile, build, colors, compile, concatenate, configFile, cp, cpdir, crypto, customCompilers, cwd, data, dirname, exec, exist, extension, filename, files, folders, fs, inWatchMode, inputDirectory, isDirectory, md5, mergeObjects, mkdir, now, option, outputDirectory, parseBuild, parseBuildObject, parseConfig, parseNotation, paths, program, publishSchematic, read, relative, resolve, rocketPath, stderr, stdout, trim, unlink, validateCompilers, verifyApproval, watchMode, wrench, write, _i, _len,
   __slice = [].slice;
 
 program = require("./library/node_modules/commander");
@@ -43,7 +43,7 @@ MAJOR_VERSION = 0;
 
 MINOR_VERSION = 1;
 
-BUILD = 10;
+BUILD = 12;
 
 VERSION = [MAJOR_VERSION, MINOR_VERSION, BUILD].join(".");
 
@@ -61,7 +61,8 @@ NOTATION = {
   REPLACE: "replace",
   REMOVE: "remove",
   CONCAT: "concat",
-  MINIFY: "minify"
+  MINIFY: "minify",
+  INSERT: "insert"
 };
 
 OPTIONS = [["-a, --approve", "automatically approve schematic", false], ["-s, --schematic", "view schematic", false], ["-w, --watch", "sets " + DOGTAG + " in watch mode", false], ["-u, --update", "updates " + DOGTAG + " to the latest version.", false]];
@@ -124,6 +125,10 @@ REGEXP_SCRIPT = function() {
 
 REGEXP_LINK = function() {
   return /link.+href="(.+)"/g;
+};
+
+REGEXP_TRIM = function() {
+  return /(\S+)/g;
 };
 
 cwd = process.cwd();
@@ -206,12 +211,23 @@ concatenate = function(list) {
   return result;
 };
 
+trim = function(string) {
+  var result;
+  result = REGEXP_TRIM().exec(string);
+  if (!(result != null)) {
+    return null;
+  } else if (result.length > 0) {
+    return result[1];
+  }
+  return null;
+};
+
 exist = function(path, created) {
   var file, result;
   if (created == null) {
     created = false;
   }
-  result = paths.existsSync;
+  result = paths.existsSync(path);
   if (result === false && created === true) {
     if ((function() {
       var _i, _len, _results;
@@ -260,13 +276,15 @@ parseConfig = function(path) {
   }
   rocketPath = dirname(rocketPath);
   filepath = resolve(".", path);
-  if (isDirectory(filepath) === true) {
-    filepath = resolve(filepath, DEFAULT_CONFIG_NAME);
+  if (exist(filepath) === true) {
+    if (isDirectory(filepath) === true) {
+      filepath = resolve(filepath, DEFAULT_CONFIG_NAME);
+    }
   }
-  if (exist(filepath, true === true)) {
+  if (exist(filepath, true) === true) {
     configFile = filepath;
   } else {
-    stderr(1, "Configuration file does not exist.");
+    stderr(1, "Configuration file does not exist (" + filepath + ").");
   }
   cwd = dirname(filepath);
   try {
@@ -365,7 +383,7 @@ parseBuildObject = function(object, append) {
 };
 
 parseNotation = function(string) {
-  var action, all, block, link, links, markup, match, result, script, scripts, sources, target, type, _i, _j, _len, _len1;
+  var action, all, block, link, links, markup, match, result, row, rows, script, scripts, sources, target, type, _i, _j, _k, _len, _len1, _len2;
   result = string;
   while ((match = REGEXP_NOTATION().exec(result)) != null) {
     all = match[0], type = match[1], action = match[2], target = match[3], block = match[4];
@@ -374,20 +392,33 @@ parseNotation = function(string) {
       case NOTATION.REMOVE:
         markup = "";
         break;
+      case NOTATION.INSERT:
+        rows = block.replace("\r", "\n").split("\n");
+        for (_i = 0, _len = rows.length; _i < _len; _i++) {
+          row = rows[_i];
+          row = trim(row);
+          if (row != null) {
+            row = resolve(inputDirectory, row);
+            if (exist(row, true) === true) {
+              markup += read(row) + FILE_SEPARATOR;
+            }
+          }
+        }
+        break;
       default:
         scripts = block.match(REGEXP_SCRIPT());
         links = block.match(REGEXP_LINK());
         sources = [];
         if (scripts != null) {
-          for (_i = 0, _len = scripts.length; _i < _len; _i++) {
-            script = scripts[_i];
+          for (_j = 0, _len1 = scripts.length; _j < _len1; _j++) {
+            script = scripts[_j];
             sources.push(resolve(inputDirectory, ((REGEXP_SCRIPT()).exec(script))[1]));
           }
           markup = "<script type=\"text/javascript\" src=\"" + target + "\"></script>";
         }
         if (links != null) {
-          for (_j = 0, _len1 = links.length; _j < _len1; _j++) {
-            link = links[_j];
+          for (_k = 0, _len2 = links.length; _k < _len2; _k++) {
+            link = links[_k];
             sources.push(resolve(inputDirectory, ((REGEXP_LINK()).exec(link))[1]));
           }
           markup = "<link rel=\"stylesheet\" type=\"text/css\" href=\"" + target + "\">";
@@ -509,6 +540,15 @@ build = function() {
     }
     stdout("\t\t" + "+".green.inverse + " " + relative(cwd, target));
   }
+  proceed = function() {
+    if (program.watch === true) {
+      watchMode();
+      return stdout("\n" + ("[" + now() + "]").grey + " Complete");
+    } else {
+      stdout("Complete");
+      return process.exit(0);
+    }
+  };
   if (files.length !== 0) {
     stdout("\tFiles:\n".bold);
   }
@@ -528,15 +568,6 @@ build = function() {
     });
   };
   next();
-  proceed = function() {
-    if (program.watch === true) {
-      watchMode();
-      return stdout("\n" + ("[" + now() + "]").grey + " Complete");
-    } else {
-      stdout("Complete");
-      return process.exit(0);
-    }
-  };
 };
 
 compile = function(buildObject, callback) {

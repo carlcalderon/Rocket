@@ -36,7 +36,7 @@ fs      = require "fs"
 DOGTAG              = "Rocket"
 MAJOR_VERSION       = 0
 MINOR_VERSION       = 1
-BUILD               = 10
+BUILD               = 12
 VERSION             = [MAJOR_VERSION, MINOR_VERSION, BUILD].join "."
 SEPARATOR           = "/"
 FILE_SEPARATOR      = "\r\n"
@@ -48,6 +48,7 @@ NOTATION =
     REMOVE:  "remove"
     CONCAT:  "concat"
     MINIFY:  "minify"
+    INSERT:  "insert"
 
 OPTIONS =
 [
@@ -109,7 +110,8 @@ COMPILERS =
 REGEXP_NOTATION = -> /<\!--\s?(rocket|sb):\s?([\S]+)\s?(\S*?)\s?-->([\s\S]*?)<\!--\s?end\s?-->/gm
 REGEXP_ARGUMENT = -> /\{([\w-]*?)\}/g
 REGEXP_SCRIPT   = -> /script.+src="(.+)"/g
-REGEXP_LINK     = -> /link.+href="(.+)"/g;
+REGEXP_LINK     = -> /link.+href="(.+)"/g
+REGEXP_TRIM     = -> /(\S+)/g
 
 # ##################################################
 # VARIABLES
@@ -156,9 +158,20 @@ concatenate = (list) ->
 
     return result
 
-exist       = (path, created = false) ->
+trim = (string) ->
 
-    result = paths.existsSync
+    result = REGEXP_TRIM().exec(string)
+
+    if not result?
+        return null
+    else if result.length > 0
+        return result[1]
+
+    return null
+
+exist = (path, created = false) ->
+
+    result = paths.existsSync path
 
     if result is no and created is yes
         result = yes if file.output is path for file in files
@@ -193,14 +206,15 @@ parseConfig = (path) ->
     filepath = resolve ".", path
 
     # If the target is a directory, locate the config file.
-    if isDirectory(filepath) is yes
-        filepath = resolve filepath, DEFAULT_CONFIG_NAME
+    if exist(filepath) is yes
+        if isDirectory(filepath) is yes
+            filepath = resolve filepath, DEFAULT_CONFIG_NAME
 
-    # Read the contents of the configuration
-    if exist filepath, yes is yes
+    # Check for config existance
+    if exist(filepath, yes) is yes
         configFile = filepath
     else
-        stderr 1, "Configuration file does not exist."
+        stderr 1, "Configuration file does not exist (#{filepath})."
 
     # Reset the current working directory to the
     # path where the config file is located.
@@ -305,6 +319,14 @@ parseNotation = (string) ->
         markup = ""
         switch action
             when NOTATION.REMOVE then markup = ""
+            when NOTATION.INSERT
+                rows = block.replace("\r","\n").split("\n");
+                for row in rows
+                    row = trim(row)
+                    if row?
+                        row = resolve(inputDirectory, row)
+                        if exist(row, yes) is yes
+                            markup += read(row) + FILE_SEPARATOR
             else
                 scripts = block.match do REGEXP_SCRIPT
                 links   = block.match do REGEXP_LINK
@@ -401,6 +423,15 @@ build = ->
             cpdir source, target, {preserve: true}
         stdout "\t\t" + "+".green.inverse + " " + relative cwd, target
 
+    # Build complete, enter watch mode?
+    proceed = ->
+        if program.watch is yes
+            do watchMode
+            stdout "\n" + ("[" + do now + "]").grey + " Complete"
+        else
+            stdout "Complete"
+            process.exit 0
+
     # Perform actions on files
     stdout "\tFiles:\n".bold unless files.length is 0
     i = 0
@@ -413,13 +444,6 @@ build = ->
             if ++i is files.length then do proceed else do next
     do next
 
-    proceed = ->
-        if program.watch is yes
-            do watchMode
-            stdout "\n" + ("[" + do now + "]").grey + " Complete"
-        else
-            stdout "Complete"
-            process.exit 0
 
     return
 
