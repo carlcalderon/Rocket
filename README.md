@@ -41,6 +41,8 @@ Last but not least is the **watch mode**! This handy feature uses [node.js][node
 | \--approve   | -a        | Automatically approves the schematic.                      |
 | \--schematic | -s        | Outputs a schematic / build order of the specified config. |
 | \--watch     | -w        | Sets Rocket in watch mode after first successful build.    |
+| \--version   | -V        | Outputs the current Rocket version.                        |
+| \--update    | -u        | Updates Rocket to the current release version.             |
 
 ## Configuration
 
@@ -267,6 +269,12 @@ Rocket (as well as Springboard) provides basic html comment-notations to inline 
 
 </script>
 <!-- end -->
+
+<!-- rocket: insert -->
+header.html
+body.html
+footer.html
+<!-- end -->
 ```
 
 ### Available actions
@@ -277,6 +285,7 @@ Rocket (as well as Springboard) provides basic html comment-notations to inline 
 | replace | Replaces/Compiles either scripts or links (css). |
 | concat  | Combines the listed files.                       |
 | minify  | As _replace_ but also minifies.                  |
+| insert  | Reads each separated row as a file to include.   |
 
 ## Rocket Inception
 
