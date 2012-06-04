@@ -174,7 +174,9 @@ exist = (path, created = false) ->
     result = paths.existsSync path
 
     if result is no and created is yes
-        result = yes if file.output is path for file in files
+        for file in files
+            if file.output is path and isDirectory(path) is no
+                result = yes
 
     return result
 

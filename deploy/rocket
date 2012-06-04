@@ -223,22 +223,17 @@ trim = function(string) {
 };
 
 exist = function(path, created) {
-  var file, result;
+  var file, result, _i, _len;
   if (created == null) {
     created = false;
   }
   result = paths.existsSync(path);
   if (result === false && created === true) {
-    if ((function() {
-      var _i, _len, _results;
-      _results = [];
-      for (_i = 0, _len = files.length; _i < _len; _i++) {
-        file = files[_i];
-        _results.push(file.output === path);
+    for (_i = 0, _len = files.length; _i < _len; _i++) {
+      file = files[_i];
+      if (file.output === path && isDirectory(path) === false) {
+        result = true;
       }
-      return _results;
-    })()) {
-      result = true;
     }
   }
   return result;
