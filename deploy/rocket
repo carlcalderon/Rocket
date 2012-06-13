@@ -652,12 +652,12 @@ compile = function(buildObject, callback) {
     execution = execPath + " " + args;
     exec(execution, EXEC_OPTIONS, function(error, result, err) {
       var compressor;
-      if (!inWatchMode) {
-        if (error != null) {
+      if ((error != null) && err !== "") {
+        if (inWatchMode === true) {
+          stdout("ERR! ".red + err);
+        } else {
           stderr(6, err);
         }
-      } else {
-        stdout("ERR! ".red + err);
       }
       if ((result != null) && result !== "") {
         if (compiler.returnsOutput === true) {

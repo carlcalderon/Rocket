@@ -527,10 +527,11 @@ compile = (buildObject, callback) ->
 
         # Perform compilation
         exec execution, EXEC_OPTIONS, (error, result, err) ->
-            unless inWatchMode
-                if error? then stderr 6, err
-            else
-                stdout "ERR! ".red + err
+            if error? and err isnt ""
+                if inWatchMode is yes
+                    stdout "ERR! ".red + err
+                else
+                    stderr 6, err
             if result? and result isnt ""
                 if compiler.returnsOutput is yes
                     if buildObject.minify is yes
