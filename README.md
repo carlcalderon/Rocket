@@ -12,9 +12,9 @@ First of all, you need [node.js][nodejs]. Once you have node.js, run the followi
 
  	sudo git clone -b "deploy" git://github.com/carlcalderon/Rocket.git /usr/local/lib/rocket; sudo ln -s /usr/local/lib/rocket/rocket /usr/local/bin/rocket
 
-By running the above makes updating Rocket easy too. Open up the terminal and run:
+Updating Rocket easy too. Open up the terminal and run:
 
-	cd /usr/local/lib/rocket/; sudo git pull -f
+	rocket --update
 
 If you encounter exec permission issues, try the following command:
 
