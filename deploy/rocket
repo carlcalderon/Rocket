@@ -108,6 +108,22 @@ COMPILERS = {
     extension: "less",
     minifier: "yuicompressor",
     builtIn: true
+  },
+  scss: {
+    executable: "./library/node_modules/sass/bin/scss",
+    "arguments": "{input}",
+    returnsOutput: true,
+    extension: "scss",
+    minifier: "yuicompressor",
+    builtIn: true
+  },
+  sass: {
+    executable: "./library/node_modules/sass/bin/sass",
+    "arguments": "{input}",
+    returnsOutput: true,
+    extension: "sass",
+    minifier: "yuicompressor",
+    builtIn: true
   }
 };
 

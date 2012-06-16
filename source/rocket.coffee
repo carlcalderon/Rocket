@@ -101,6 +101,20 @@ COMPILERS =
         extension:     "less"
         minifier:      "yuicompressor"
         builtIn:       yes
+    scss:
+        executable:    "./library/node_modules/sass/bin/scss"
+        arguments:     "{input}"
+        returnsOutput: yes
+        extension:     "scss"
+        minifier:      "yuicompressor"
+        builtIn:       yes
+    sass:
+        executable:    "./library/node_modules/sass/bin/sass"
+        arguments:     "{input}"
+        returnsOutput: yes
+        extension:     "sass"
+        minifier:      "yuicompressor"
+        builtIn:       yes
 
 # ##################################################
 # REGULAR EXPRESSIONS
