@@ -202,6 +202,8 @@ Rocket comes with a collection of commonly used compilers for your convenience. 
 | closure       | Minify           | `{compiler: "closure"}`         |
 | coffeescript  | Compile .coffee  | *.coffee as input               |
 | less          | Compile .less    | *.less as input                 |
+| scss          | Compile .scss    | *.scss as input                 |
+| sass          | Compile .sass    | *.sass as input                 |
 
 #### Custom Compilers
 
