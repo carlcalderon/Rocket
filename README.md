@@ -363,7 +363,7 @@ Carl Calderon: [@carlcalderon][twitter]
 
 ## Contributors
 
-Matthew Wagerfield: [@mwagerfield]()http://twitter.com/mwagerfield)
+Matthew Wagerfield: [@mwagerfield](http://twitter.com/mwagerfield)
 
 ## License
 
