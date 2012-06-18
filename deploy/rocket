@@ -628,11 +628,9 @@ compile = function(buildObject, callback) {
       execPath = compressor.prefix + " " + execPath;
     }
     execution = execPath + " " + args;
-    stdout("execution: " + execution);
     exec(execution, EXEC_OPTIONS, function(error, result, err) {
       if (result != null) {
         if (compressor.returnsOutput === true) {
-          stdout("compress result: " + result);
           return callback(result);
         } else {
           return callback(null);
