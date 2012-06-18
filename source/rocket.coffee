@@ -76,13 +76,15 @@ COMPILERS =
         minifies:      "js"
         builtIn:       yes
     yuicompressor:
-        executable:    "java -jar -Xss2048k ./library/compilers/yuicompressor/yuicompressor-2.4.7.jar"
+        prefix:        "java -jar -Xss2048k"
+        executable:    "./library/compilers/yuicompressor/yuicompressor-2.4.7.jar"
         arguments:     "--type \"css\" {input}"
         returnsOutput: yes
         minifies:      "css"
         builtIn:       yes
     closure:
-        executable:    "java -jar ./library/compilers/google_closure/compiler.jar"
+        prefix:        "java -jar -Xss2048k"
+        executable:    "./library/compilers/google_closure/compiler.jar"
         arguments:     "{input}"
         returnsOutput: yes
         minifier:      "uglify"
@@ -491,6 +493,7 @@ compile = (buildObject, callback) ->
             args  = args.replace field[0], value or ""
         execPath  = compressor.executable
         if compressor.builtIn is yes then execPath = resolve(rocketPath, compressor.executable)
+        if compressor.prefix? then execPath = compressor.prefix + " " + execPath
         execution = execPath + " " + args
 
         # Perform compression
@@ -537,6 +540,7 @@ compile = (buildObject, callback) ->
             args  = args.replace field[0], value or ""
         execPath  = compiler.executable
         if compiler.builtIn is yes then execPath = resolve(rocketPath, compiler.executable)
+        if compiler.prefix? then execPath = compiler.prefix + " " + execPath
         execution = execPath + " " + args
 
         # Perform compilation

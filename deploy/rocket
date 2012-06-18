@@ -80,14 +80,16 @@ COMPILERS = {
     builtIn: true
   },
   yuicompressor: {
-    executable: "java -jar -Xss2048k ./library/compilers/yuicompressor/yuicompressor-2.4.7.jar",
+    prefix: "java -jar -Xss2048k",
+    executable: "./library/compilers/yuicompressor/yuicompressor-2.4.7.jar",
     "arguments": "--type \"css\" {input}",
     returnsOutput: true,
     minifies: "css",
     builtIn: true
   },
   closure: {
-    executable: "java -jar ./library/compilers/google_closure/compiler.jar",
+    prefix: "java -jar -Xss2048k",
+    executable: "./library/compilers/google_closure/compiler.jar",
     "arguments": "{input}",
     returnsOutput: true,
     minifier: "uglify",
@@ -622,10 +624,15 @@ compile = function(buildObject, callback) {
     if (compressor.builtIn === true) {
       execPath = resolve(rocketPath, compressor.executable);
     }
+    if (compressor.prefix != null) {
+      execPath = compressor.prefix + " " + execPath;
+    }
     execution = execPath + " " + args;
+    stdout("execution: " + execution);
     exec(execution, EXEC_OPTIONS, function(error, result, err) {
       if (result != null) {
         if (compressor.returnsOutput === true) {
+          stdout("compress result: " + result);
           return callback(result);
         } else {
           return callback(null);
@@ -664,6 +671,9 @@ compile = function(buildObject, callback) {
     execPath = compiler.executable;
     if (compiler.builtIn === true) {
       execPath = resolve(rocketPath, compiler.executable);
+    }
+    if (compiler.prefix != null) {
+      execPath = compiler.prefix + " " + execPath;
     }
     execution = execPath + " " + args;
     exec(execution, EXEC_OPTIONS, function(error, result, err) {
