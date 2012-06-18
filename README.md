@@ -269,6 +269,7 @@ The following example shows how a single custom compiler can produce different r
 | :------------ | :------------------------------------------------------- | :------: |
 | executable    | Path to executable.                                      | false    |
 | arguments     | Command line arguments.                                  | false    |
+| prefix        | Command line arguments placed prior to executable path.  | true     |
 | returnsOutput | True if compiler output results.                         | true     |
 | extension     | File-extension used to match input files.                | true     |
 | minifies      | File-extension used to match input files when minifying. | true     |
