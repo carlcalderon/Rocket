@@ -22,13 +22,16 @@ limitations under the License.
 # ##################################################
 # DEPENDENCIES
 # ##################################################
-program = require "./library/node_modules/commander"
-colors  = require "./library/node_modules/colors"
-wrench  = require "./library/node_modules/wrench"
-cp      = require "child_process"
-crypto  = require "crypto"
-paths   = require "path"
-fs      = require "fs"
+program  = require "./library/node_modules/commander"
+colors   = require "./library/node_modules/colors"
+wrench   = require "./library/node_modules/wrench"
+cp       = require "child_process"
+crypto   = require "crypto"
+paths    = require "path"
+fs       = require "fs"
+rocket   = require "./library/node_modules/rocket"
+ƒ        = rocket.methods
+notation = rocket.notation
 
 # ##################################################
 # CONSTANTS
@@ -146,68 +149,18 @@ inputDirectory  = "source"
 # ##################################################
 # HELPERS AND SHORTHANDS
 # ##################################################
-filename    = paths.basename
-relative    = paths.relative
-resolve     = paths.resolve
-dirname     = paths.dirname
-unlink      = fs.unlinkSync
-stdout      = console.log
-mkdir       = fs.mkdirSync
-cpdir       = wrench.copyDirSyncRecursive
-exec        = cp.exec
-now         = -> do new Date().toLocaleTimeString
-md5         = (string) -> crypto.createHash("md5").update(string).digest "hex"
-read        = (path) -> fs.readFileSync path, FILE_ENCODING
-write       = (path, content) -> fs.writeFileSync path, content, FILE_ENCODING
-extension   = (path) -> path.substr path.lastIndexOf(".") + 1
-isDirectory = (path) -> do (fs.statSync path).isDirectory
-stderr      = (code, message...) ->
+cpdir        = wrench.copyDirSyncRecursive
+stdout       = ƒ.stdout
+stderr       = ƒ.stderr
+exist        = (path, created = no) ->
 
-    message.unshift "ERR!".red
-    stdout.apply @, message
-    process.exit code
-
-concatenate = (list) ->
-
-    result = ""
-    result += read file for file in list
-
-    return result
-
-trim = (string) ->
-
-    result = REGEXP_TRIM().exec(string)
-
-    if not result?
-        return null
-    else if result.length > 0
-        return result[1]
-
-    return null
-
-exist = (path, created = false) ->
-
-    result = paths.existsSync path
-
+    result = ƒ.exist path
     if result is no and created is yes
         for file in files
-            if file.output is path and isDirectory(path) is no
+            if file.output is path and ƒ.isDirectory(path) is no
                 result = yes
 
     return result
-
-allExist = (list) ->
-    for item in list
-        return no if exist item is no
-    return yes
-
-mergeObjects = () ->
-    result = {}
-    for object in arguments
-        for key, value of object
-            result[key] = value
-    return result
-
 
 # ##################################################
 # PARSING
@@ -215,18 +168,18 @@ mergeObjects = () ->
 parseConfig = (path) ->
 
     # Get the proper process directory
-    rocketPath = resolve cwd, process.argv[1]
+    rocketPath = ƒ.resolve cwd, process.argv[1]
     if fs.lstatSync(rocketPath).isSymbolicLink() is yes
         rocketPath = fs.readlinkSync rocketPath
-    rocketPath = dirname rocketPath
+    rocketPath = ƒ.dirname rocketPath
 
     # Resolve config path making it absolute
-    filepath = resolve ".", path
+    filepath = ƒ.resolve ".", path
 
     # If the target is a directory, locate the config file.
     if exist(filepath) is yes
-        if isDirectory(filepath) is yes
-            filepath = resolve filepath, DEFAULT_CONFIG_NAME
+        if ƒ.isDirectory(filepath) is yes
+            filepath = ƒ.resolve filepath, DEFAULT_CONFIG_NAME
 
     # Check for config existance
     if exist(filepath, yes) is yes
@@ -237,7 +190,7 @@ parseConfig = (path) ->
     # Reset the current working directory to the
     # path where the config file is located.
     # All execution originate from that path.
-    cwd = dirname filepath
+    cwd = ƒ.dirname filepath
 
     # Convert it to JSON
     try
@@ -246,15 +199,15 @@ parseConfig = (path) ->
         stderr 2, "Configuration error. Invalid JSON?"
 
     # Check for specified basedir
-    cwd = (resolve cwd, data.base_dir) if data.base_dir?
+    cwd = (ƒ.resolve cwd, data.base_dir) if data.base_dir?
 
     # Reset lists
     files   = []
     folders = []
 
     # Resolve target and source dirs
-    outputDirectory = resolve cwd, data.output_dir
-    inputDirectory  = resolve cwd, data.input_dir
+    outputDirectory = ƒ.resolve cwd, data.output_dir
+    inputDirectory  = ƒ.resolve cwd, data.input_dir
     customCompilers = data.compilers
 
     # Make sure the input directory is valid
@@ -289,22 +242,22 @@ parseBuildObject = (object, append = yes) ->
     if typeof object is "string"
 
         # Resolve file path
-        sourcePath = resolve inputDirectory, object
-        targetPath = resolve outputDirectory, object
+        sourcePath = ƒ.resolve inputDirectory, object
+        targetPath = ƒ.resolve outputDirectory, object
 
         # Make sure path is valid
         unless exist sourcePath, true
             stderr 4, "Parse error\n#{sourcePath} does not exist."
 
         # Add directory to folders list
-        if isDirectory sourcePath
+        if ƒ.isDirectory sourcePath
             if append is yes then folders.push
                 output: targetPath
                 input: [sourcePath]
 
         # Process file for notation
         else
-            parseNotation read sourcePath
+            parseNotation ƒ.read sourcePath
             if append is yes then files.push
                 output: targetPath
                 input: [sourcePath]
@@ -312,17 +265,17 @@ parseBuildObject = (object, append = yes) ->
 
     # File/folder require action
     else
-        object.output = resolve outputDirectory, object.output
+        object.output = ƒ.resolve outputDirectory, object.output
         input = []
         if typeof object.input is "string" then object.input = [object.input]
         for source in object.input
-            sourcePath = resolve inputDirectory, source
+            sourcePath = ƒ.resolve inputDirectory, source
             stderr 1, "#{source} does not exist." if not exist sourcePath, true
-            parseNotation read sourcePath unless isDirectory sourcePath
+            parseNotation ƒ.read sourcePath unless ƒ.isDirectory sourcePath
             input.push sourcePath
         object.input = input
         if append is yes
-            if isDirectory input[0]
+            if ƒ.isDirectory input[0]
                 folders.push object
             else
                 files.push object
@@ -331,46 +284,22 @@ parseBuildObject = (object, append = yes) ->
 
 parseNotation = (string) ->
 
-    result = string
-    while (match = REGEXP_NOTATION().exec result)?
-        [all, type, action, target, block] = match
-        markup = ""
-        switch action
-            when NOTATION.REMOVE then markup = ""
-            when NOTATION.INSERT
-                rows = block.replace("\r","\n").split("\n");
-                for row in rows
-                    row = trim(row)
-                    if row?
-                        row = resolve(inputDirectory, row)
-                        if exist(row, yes) is yes
-                            markup += read(row) + FILE_SEPARATOR
-            else
-                scripts = block.match do REGEXP_SCRIPT
-                links   = block.match do REGEXP_LINK
-                sources = []
-                if scripts?
-                    for script in scripts
-                        sources.push resolve inputDirectory, ((do REGEXP_SCRIPT).exec script)[1]
-                    markup = "<script type=\"text/javascript\" src=\"#{target}\"></script>"
-                if links?
-                    for link in links
-                        sources.push resolve inputDirectory, ((do REGEXP_LINK).exec link)[1]
-                    markup = "<link rel=\"stylesheet\" type=\"text/css\" href=\"#{target}\">"
-                appendFile
-                    minify: action == NOTATION.MINIFY
-                    output: resolve outputDirectory, target
-                    input: sources
-        result = result.replace all, markup
+    result = notation.parse string, inputDirectory
 
-    return result
+    if result.output?
+        result.output = ƒ.resolve outputDirectory, result.output
+        appendFile
+            minify: result.minify
+            output: result.output
+            input:  result.files
+    return result.data
 
 appendFile = (buildObject) ->
 
     for file in files
         if file.output is buildObject.output
             for source in buildObject.input
-                file.input.push source unless (file.input.indexOf resolve inputDirectory, source) > -1
+                file.input.push source unless (file.input.indexOf ƒ.resolve inputDirectory, source) > -1
                 parseBuildObject file, false
             return
     parseBuildObject buildObject
@@ -387,15 +316,15 @@ publishSchematic = ->
 
     stdout "\n\tFiles:\n".bold unless files.length is 0
     for file in files
-        stdout "\t\t" + (relative cwd, file.output).green
+        stdout "\t\t" + (ƒ.relative cwd, file.output).green
         for inputFile in file.input
-            stdout "\t\t\t" + relative cwd, inputFile
+            stdout "\t\t\t" + ƒ.relative cwd, inputFile
 
     stdout "\n\tFolders:\n".bold unless folders.length is 0
     for folder in folders
-        stdout "\t\t" + (relative cwd, folder.output).green
+        stdout "\t\t" + (ƒ.relative cwd, folder.output).green
         for inputFolder in folder.input
-            stdout "\t\t\t" + relative cwd, inputFolder
+            stdout "\t\t\t" + ƒ.relative cwd, inputFolder
     stdout ""
 
     return
@@ -423,29 +352,29 @@ build = ->
 
     # Create the folder structure
     for folder in folderList
-        relativePath = relative process.cwd(), folder.output
+        relativePath = ƒ.relative process.cwd(), folder.output
         tree         = relativePath.split SEPARATOR
         result       = []
         for f, i in tree
             result[i] = tree.slice(0, i+1).join SEPARATOR
         for f in result
             unless f is ".." or f is ""
-                mkdir f unless exist f
+                ƒ.mkdir f unless exist f
 
     # Copy files in targeted folders
     stdout "\tFolders:\n".bold unless folders.length is 0
     for folder in folders
-        target = resolve cwd, folder.output
+        target = ƒ.resolve cwd, folder.output
         for sourceFolder in folder.input
-            source = resolve cwd, sourceFolder
+            source = ƒ.resolve cwd, sourceFolder
             cpdir source, target, {preserve: true}
-        stdout "\t\t" + "+".green.inverse + " " + relative cwd, target
+        stdout "\t\t" + "+".green.inverse + " " + ƒ.relative cwd, target
 
     # Build complete, enter watch mode?
     proceed = ->
         if program.watch is yes
             do watchMode
-            stdout "\n" + ("[" + do now + "]").grey + " Complete"
+            stdout "\n" + ("[" + do ƒ.now + "]").grey + " Complete"
         else
             stdout "Complete"
             process.exit 0
@@ -455,10 +384,10 @@ build = ->
     i = 0
     next = ->
         file = files[i]
-        stdout "\t\t" + "+".green.inverse + " " + relative cwd, file.output
+        stdout "\t\t" + "+".green.inverse + " " + ƒ.relative cwd, file.output
         compile file, (result) ->
             unless result is null
-                write file.output, result
+                ƒ.write file.output, result
             if ++i is files.length then do proceed else do next
     do next
 
@@ -470,18 +399,18 @@ compile = (buildObject, callback) ->
     if buildObject.compiler?
         compiler = customCompilers[buildObject.compiler]
     else
-        compilerList = mergeObjects COMPILERS, customCompilers
+        compilerList = ƒ.mergeObjects COMPILERS, customCompilers
         for key, value of compilerList
-            compiler = compilerList[key] if value.extension is extension buildObject.input[0]
+            compiler = compilerList[key] if value.extension is ƒ.extension buildObject.input[0]
             if compiler? then break
 
     minify = (inputPath, buildObject, compressor, callback) ->
 
         if not compressor?
             # Find compressor if not specified
-            compressorList = mergeObjects COMPILERS, customCompilers
+            compressorList = ƒ.mergeObjects COMPILERS, customCompilers
             for id, compiler of compressorList
-                compressor = compiler if extension(buildObject.output) is compiler.minifies
+                compressor = compiler if ƒ.extension(buildObject.output) is compiler.minifies
                 if compressor? then break
 
         # Setup exec
@@ -492,12 +421,12 @@ compile = (buildObject, callback) ->
             value = buildObject[field[1]]
             args  = args.replace field[0], value or ""
         execPath  = compressor.executable
-        if compressor.builtIn is yes then execPath = resolve(rocketPath, compressor.executable)
+        if compressor.builtIn is yes then execPath = ƒ.resolve(rocketPath, compressor.executable)
         if compressor.prefix? then execPath = compressor.prefix + " " + execPath
         execution = execPath + " " + args
 
         # Perform compression
-        exec execution, EXEC_OPTIONS, (error, result, err) ->
+        ƒ.exec execution, EXEC_OPTIONS, (error, result, err) ->
             if result?
                 if compressor.returnsOutput is yes
                     callback result
@@ -511,7 +440,7 @@ compile = (buildObject, callback) ->
     complete = (result = null) ->
 
         # Remove temp file
-        unlink tempFile
+        ƒ.unlink tempFile
 
         # Call specified listener
         callback result
@@ -521,11 +450,11 @@ compile = (buildObject, callback) ->
     # Notation
     contents = ""
     for file in buildObject.input
-        contents += parseNotation(read file) + FILE_SEPARATOR
+        contents += parseNotation(ƒ.read file) + FILE_SEPARATOR
 
     # Write concat / result temporary
-    tempFile = "/tmp/" + filename buildObject.input[0]
-    write tempFile, contents
+    tempFile = "/tmp/" + ƒ.filename buildObject.input[0]
+    ƒ.write tempFile, contents
 
     if compiler?
         # Compile
@@ -539,12 +468,12 @@ compile = (buildObject, callback) ->
             value = buildObject[field[1]]
             args  = args.replace field[0], value or ""
         execPath  = compiler.executable
-        if compiler.builtIn is yes then execPath = resolve(rocketPath, compiler.executable)
+        if compiler.builtIn is yes then execPath = ƒ.resolve(rocketPath, compiler.executable)
         if compiler.prefix? then execPath = compiler.prefix + " " + execPath
         execution = execPath + " " + args
 
         # Perform compilation
-        exec execution, EXEC_OPTIONS, (error, result, err) ->
+        ƒ.exec execution, EXEC_OPTIONS, (error, result, err) ->
             if error? and err isnt ""
                 if inWatchMode is yes
                     stdout "ERR! ".red + err
@@ -553,7 +482,7 @@ compile = (buildObject, callback) ->
             if result? and result isnt ""
                 if compiler.returnsOutput is yes
                     if buildObject.minify is yes
-                        write tempFile, result
+                        ƒ.write tempFile, result
                         compressor = if compiler.minifier? then COMPILERS[compiler.minifier] else null
                         minify tempFile, buildObject, compressor, (compressed) ->
                             complete compressed
@@ -576,8 +505,8 @@ compile = (buildObject, callback) ->
                 do watcher.close for watcher in watchers
                 compile buildObject, (result) ->
                     unless result is null
-                        write buildObject.output, result
-                    stdout ("[" + do now + "]").grey + " Compiled " + relative(cwd, buildObject.output).bold
+                        ƒ.write buildObject.output, result
+                    stdout ("[" + do ƒ.now + "]").grey + " Compiled " + ƒ.relative(cwd, buildObject.output).bold
 
     return
 
@@ -591,7 +520,7 @@ watchMode = ->
 
         # Watch build configuration file
         fs.watch configFile, ->
-            stdout ("[" + do now + "]").grey + " Config changed"
+            stdout ("[" + do ƒ.now + "]").grey + " Config changed"
             parseConfig configFile
             do build
 
@@ -602,7 +531,7 @@ watchMode = ->
         for sourcePath in buildObject.input
             watchFolder = (sourcePath, object) ->
                 fs.watch sourcePath, (event, folder) ->
-                    stdout ("[" + do now + "]").grey + " Folder updated: " + relative(cwd, object.output).bold
+                    stdout ("[" + do ƒ.now + "]").grey + " Folder updated: " + ƒ.relative(cwd, object.output).bold
                     cpdir sourcePath, object.output, {preserve: true}
             watchFolder sourcePath, buildObject
 
@@ -623,7 +552,7 @@ stdout "#{DOGTAG} #{VERSION}"
 
 # Check for update flag
 if program.update is yes
-    exec UPDATE_EXEC, (error, result, err) ->
+    ƒ.exec UPDATE_EXEC, (error, result, err) ->
         if error? then stderr 6, err else
             stdout "Update successful."
 else
@@ -632,7 +561,7 @@ else
     if program.args? and program.args[0]?
         parseConfig program.args[0]
     else
-        parseConfig resolve cwd, DEFAULT_CONFIG_NAME
+        parseConfig ƒ.resolve cwd, DEFAULT_CONFIG_NAME
 
     # Schematic
     if program.schematic is yes
