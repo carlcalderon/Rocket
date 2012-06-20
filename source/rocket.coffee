@@ -19,9 +19,9 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ###
 
-# ##################################################
+# ============================================================
 # DEPENDENCIES
-# ##################################################
+# ============================================================
 program   = require "./library/node_modules/commander"
 colors    = require "./library/node_modules/colors"
 wrench    = require "./library/node_modules/wrench"
@@ -30,17 +30,17 @@ crypto    = require "crypto"
 paths     = require "path"
 fs        = require "fs"
 rocket    = require "./library/node_modules/rocket"
-utils     = rocket.utils
-notation  = rocket.notation
 schematic = rocket.schematic
+notation  = rocket.notation
+utils     = rocket.utils
 
-# ##################################################
+# ============================================================
 # CONSTANTS
-# ##################################################
+# ============================================================
 DOGTAG              = "Rocket"
 MAJOR_VERSION       = 0
 MINOR_VERSION       = 1
-BUILD               = 12
+BUILD               = 13
 VERSION             = [MAJOR_VERSION, MINOR_VERSION, BUILD].join "."
 SEPARATOR           = "/"
 FILE_SEPARATOR      = "\r\n"
@@ -65,9 +65,9 @@ OPTIONS =
 EXEC_OPTIONS =
     env: process.env
 
-# ##################################################
+# ============================================================
 # COMPILERS
-# ##################################################
+# ============================================================
 # List of currenlty supported compilers where
 # the arguments holds {n} custom arguments.
 # The {input} placeholder always specifies the
@@ -122,20 +122,21 @@ COMPILERS =
         minifier:      "yuicompressor"
         builtIn:       yes
 
-# ##################################################
+# ============================================================
 # REGULAR EXPRESSIONS
-# ##################################################
+#
 # Fixes multiple execution bug in ECMAScript
 # by always return an unused pattern.
+# ============================================================
 REGEXP_NOTATION = -> /<\!--\s?(rocket|sb):\s?([\S]+)\s?(\S*?)\s?-->([\s\S]*?)<\!--\s?end\s?-->/gm
 REGEXP_ARGUMENT = -> /\{([\w-]*?)\}/g
 REGEXP_SCRIPT   = -> /script.+src="(.+)"/g
 REGEXP_LINK     = -> /link.+href="(.+)"/g
 REGEXP_TRIM     = -> /(\S+)/g
 
-# ##################################################
+# ============================================================
 # VARIABLES
-# ##################################################
+# ============================================================
 cwd             = do process.cwd
 data            = null
 files           = []
@@ -143,16 +144,25 @@ folders         = []
 configFile      = null
 rocketPath      = null
 inWatchMode     = no
-customCompilers = []
-outputDirectory = "deploy"
 inputDirectory  = "source"
+outputDirectory = "deploy"
+customCompilers = []
 
-# ##################################################
+# ============================================================
 # HELPERS AND SHORTHANDS
-# ##################################################
+# ============================================================
+
+# Copies a complete directory tree.
 cpdir        = wrench.copyDirSyncRecursive
+
+# Output
 stdout       = utils.stdout
+
+# Error output
 stderr       = utils.stderr
+
+# Verifies existence of a file both currently
+# available and in future due to Rocket build progress.
 exist        = (path, created = no) ->
 
     result = utils.exist path
@@ -163,22 +173,27 @@ exist        = (path, created = no) ->
 
     return result
 
+# Matches given buildObject to available compilers
+# and returns the first match based on input file(s).
 findCompiler = (buildObject) ->
+
     compiler = null
     if buildObject.compiler?
         compiler = customCompilers[buildObject.compiler]
     else
         compilerList = utils.mergeObjects COMPILERS, customCompilers
-        extensions = (utils.extension file for file in buildObject.input)
+        extensions   = (utils.extension file for file in buildObject.input)
         for key, value of compilerList
             compiler = compilerList[key] if extensions.indexOf(value.extension) > -1
             if compiler? then break
 
     return compiler
 
-# ##################################################
+# ============================================================
 # PARSING
-# ##################################################
+# ============================================================
+
+# Reads and parses the specified configuration file.
 parseConfig = (path) ->
 
     # Get the proper process directory
@@ -235,6 +250,7 @@ parseConfig = (path) ->
 
     return
 
+# Validates custom compilers for missing fields.
 validateCompilers = (list) ->
 
     # Only required field for a compiler is "executable"
@@ -243,6 +259,7 @@ validateCompilers = (list) ->
 
     return
 
+# Parses a list of buildObjects
 parseBuild = (list) ->
 
     # Go through all files in configuration
@@ -250,6 +267,8 @@ parseBuild = (list) ->
 
     return
 
+# Parses a single buildObject and appends the
+# result to the build order if specified.
 parseBuildObject = (object, append = yes) ->
 
     # No need for compile or minify
@@ -297,6 +316,10 @@ parseBuildObject = (object, append = yes) ->
 
     return
 
+# Parses a string (file content) for notation
+# blocks. If the string includes futher action
+# such as minify or insert, this action will be
+# added to the build queue.
 parseNotation = (string) ->
 
     result = notation.parse string, inputDirectory
@@ -309,6 +332,11 @@ parseNotation = (string) ->
             input:  result.files
     return result.data
 
+# Appends a single buildObject to the build queue.
+# If the specified buildObject output already exist
+# as another buildObject in the build queue, that
+# buildObject will be appended instead of adding a
+# duplicate of the same output.
 appendFile = (buildObject) ->
 
     for file in files
@@ -321,18 +349,22 @@ appendFile = (buildObject) ->
 
     return
 
-# ##################################################
+# ============================================================
 # SCHEMATIC
-# ##################################################
+# ============================================================
+
+# Prints the schematic produced by the configuration file.
 publishSchematic = ->
     stdout ""
     stdout schematic.parse cwd, inputDirectory, outputDirectory, files, folders
     stdout ""
     return
 
-# ##################################################
+# ============================================================
 # BUILD PROCESSES
-# ##################################################
+# ============================================================
+
+# Asks for user approval
 verifyApproval = (message, success) ->
 
     program.confirm "\n#{message} [y/n]: ", (result) ->
@@ -341,6 +373,7 @@ verifyApproval = (message, success) ->
 
     return
 
+# Starts the build process
 build = ->
 
     stdout "\nBuild:".bold + "\t\t" + "+".grey.inverse + " Copy/Concat " + "+".green.inverse + " Compile " + "+".cyan.inverse + " Minify\n"
@@ -397,15 +430,12 @@ build = ->
 
     return
 
+# Compiles a single buildObject and executes
+# the callback method upong completion. Callback
+# receives compilation result as the first argument.
 compile = (buildObject, callback) ->
 
-    if buildObject.compiler?
-        compiler = customCompilers[buildObject.compiler]
-    else
-        compilerList = utils.mergeObjects COMPILERS, customCompilers
-        for key, value of compilerList
-            compiler = compilerList[key] if value.extension is utils.extension buildObject.input[0]
-            if compiler? then break
+    compiler = findCompiler buildObject
 
     minify = (inputPath, buildObject, compressor, callback) ->
 
@@ -513,9 +543,12 @@ compile = (buildObject, callback) ->
 
     return
 
-# ##################################################
+# ============================================================
 # WATCH MODE
-# ##################################################
+# ============================================================
+
+# Puts Rocket in Watch mode. Any change to parsed
+# buildObject's input will trigger a recompilation.
 watchMode = ->
 
     unless inWatchMode is yes
@@ -541,9 +574,9 @@ watchMode = ->
 
     return
 
-# ##################################################
+# ============================================================
 # START
-# ##################################################
+# ============================================================
 
 # Initiate program
 program.usage "[options] <configuration file>"

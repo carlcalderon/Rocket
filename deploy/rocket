@@ -38,11 +38,11 @@ fs = require("fs");
 
 rocket = require("./library/node_modules/rocket");
 
-utils = rocket.utils;
+schematic = rocket.schematic;
 
 notation = rocket.notation;
 
-schematic = rocket.schematic;
+utils = rocket.utils;
 
 DOGTAG = "Rocket";
 
@@ -50,7 +50,7 @@ MAJOR_VERSION = 0;
 
 MINOR_VERSION = 1;
 
-BUILD = 12;
+BUILD = 13;
 
 VERSION = [MAJOR_VERSION, MINOR_VERSION, BUILD].join(".");
 
@@ -170,11 +170,11 @@ rocketPath = null;
 
 inWatchMode = false;
 
-customCompilers = [];
+inputDirectory = "source";
 
 outputDirectory = "deploy";
 
-inputDirectory = "source";
+customCompilers = [];
 
 cpdir = wrench.copyDirSyncRecursive;
 
@@ -445,7 +445,7 @@ build = function() {
       watchMode();
       return stdout("\n" + ("[" + utils.now() + "]").grey + " Complete");
     } else {
-      stdout("\nComplete");
+      stdout("\nComplete".bold);
       return process.exit(0);
     }
   };
@@ -479,23 +479,10 @@ build = function() {
 };
 
 compile = function(buildObject, callback) {
-  var args, compiler, compilerList, complete, contents, execPath, execution, field, file, key, minify, sourcePath, tempFile, value, watchers, _i, _j, _len, _len1, _ref, _ref1;
-  if (buildObject.compiler != null) {
-    compiler = customCompilers[buildObject.compiler];
-  } else {
-    compilerList = utils.mergeObjects(COMPILERS, customCompilers);
-    for (key in compilerList) {
-      value = compilerList[key];
-      if (value.extension === utils.extension(buildObject.input[0])) {
-        compiler = compilerList[key];
-      }
-      if (compiler != null) {
-        break;
-      }
-    }
-  }
+  var args, compiler, complete, contents, execPath, execution, field, file, minify, sourcePath, tempFile, value, watchers, _i, _j, _len, _len1, _ref, _ref1;
+  compiler = findCompiler(buildObject);
   minify = function(inputPath, buildObject, compressor, callback) {
-    var args, compressorList, execPath, execution, field, id;
+    var args, compressorList, execPath, execution, field, id, value;
     if (!(compressor != null)) {
       compressorList = utils.mergeObjects(COMPILERS, customCompilers);
       for (id in compressorList) {
