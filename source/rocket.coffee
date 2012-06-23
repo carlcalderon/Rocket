@@ -225,7 +225,7 @@ parseConfig = (path) ->
     try
         data = JSON.parse fs.readFileSync filepath
     catch error
-        stderr 2, "Configuration error. Invalid JSON?"
+        stderr 2, "Configuration error. Invalid JSON?", !inWatchMode
 
     # Check for specified basedir
     cwd = (utils.resolve cwd, data.base_dir) if data.base_dir?
@@ -240,7 +240,9 @@ parseConfig = (path) ->
     customCompilers = data.compilers
 
     # Make sure the input directory is valid
-    stderr 1, "Input directory does not exist." unless exist inputDirectory, yes
+    unless exist inputDirectory, yes
+        stderr 1, "Input directory does not exist.", !inWatchMode
+        return
 
     # Validate compilers
     validateCompilers customCompilers
@@ -255,7 +257,7 @@ validateCompilers = (list) ->
 
     # Only required field for a compiler is "executable"
     for id, options of list
-        stderr 3, "Compiler \"#{id}\" is missing \"executable\" field." unless options.executable?
+        stderr 3, "Compiler \"#{id}\" is missing \"executable\" field.", !inWatchMode unless options.executable?
 
     return
 
@@ -303,7 +305,9 @@ parseBuildObject = (object, append = yes) ->
         if typeof object.input is "string" then object.input = [object.input]
         for source in object.input
             sourcePath = utils.resolve inputDirectory, source
-            stderr 1, "#{source} does not exist." if not exist sourcePath, true
+            if not exist sourcePath, true
+                stderr 1, "#{source} does not exist.", !inWatchMode
+                return
             parseNotation utils.read sourcePath unless utils.isDirectory sourcePath
             input.push sourcePath
         object.input = input

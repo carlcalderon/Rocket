@@ -251,7 +251,7 @@ parseConfig = function(path) {
   try {
     data = JSON.parse(fs.readFileSync(filepath));
   } catch (error) {
-    stderr(2, "Configuration error. Invalid JSON?");
+    stderr(2, "Configuration error. Invalid JSON?", !inWatchMode);
   }
   if (data.base_dir != null) {
     cwd = utils.resolve(cwd, data.base_dir);
@@ -262,7 +262,8 @@ parseConfig = function(path) {
   inputDirectory = utils.resolve(cwd, data.input_dir);
   customCompilers = data.compilers;
   if (!exist(inputDirectory, true)) {
-    stderr(1, "Input directory does not exist.");
+    stderr(1, "Input directory does not exist.", !inWatchMode);
+    return;
   }
   validateCompilers(customCompilers);
   parseBuild(data.build);
@@ -273,7 +274,7 @@ validateCompilers = function(list) {
   for (id in list) {
     options = list[id];
     if (options.executable == null) {
-      stderr(3, "Compiler \"" + id + "\" is missing \"executable\" field.");
+      stderr(3, "Compiler \"" + id + "\" is missing \"executable\" field.", !inWatchMode);
     }
   }
 };
@@ -325,7 +326,8 @@ parseBuildObject = function(object, append) {
       source = _ref[_i];
       sourcePath = utils.resolve(inputDirectory, source);
       if (!exist(sourcePath, true)) {
-        stderr(1, "" + source + " does not exist.");
+        stderr(1, "" + source + " does not exist.", !inWatchMode);
+        return;
       }
       if (!utils.isDirectory(sourcePath)) {
         parseNotation(utils.read(sourcePath));
