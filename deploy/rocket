@@ -119,7 +119,7 @@ COMPILERS = {
     builtIn: true
   },
   scss: {
-    executable: "./library/node_modules/sass/bin/scss",
+    executable: "./library/compilers/sass/bin/scss",
     "arguments": "{input}",
     returnsOutput: true,
     extension: "scss",
@@ -127,7 +127,7 @@ COMPILERS = {
     builtIn: true
   },
   sass: {
-    executable: "./library/node_modules/sass/bin/sass",
+    executable: "./library/compilers/sass/bin/sass",
     "arguments": "{input}",
     returnsOutput: true,
     extension: "sass",
@@ -481,7 +481,7 @@ build = function() {
 };
 
 compile = function(buildObject, callback) {
-  var args, compiler, complete, contents, execPath, execution, field, file, minify, sourcePath, tempFile, value, watchers, _i, _j, _len, _len1, _ref, _ref1;
+  var args, compiler, complete, contents, execPath, execution, field, file, minify, sourcePath, tempFile, tempFileName, tempFilePath, value, watchers, _i, _j, _len, _len1, _ref, _ref1;
   compiler = findCompiler(buildObject);
   minify = function(inputPath, buildObject, compressor, callback) {
     var args, compressorList, execPath, execution, field, id, value;
@@ -537,7 +537,9 @@ compile = function(buildObject, callback) {
     file = _ref[_i];
     contents += parseNotation(utils.read(file)) + FILE_SEPARATOR;
   }
-  tempFile = "/tmp/" + utils.filename(buildObject.input[0]);
+  tempFileName = utils.filename(buildObject.input[0]);
+  tempFilePath = utils.dirname(buildObject.input[0]);
+  tempFile = utils.resolve(tempFilePath, "" + tempFileName + ".tmp");
   utils.write(tempFile, contents);
   if (compiler != null) {
     if (compiler.returnsOutput == null) {
@@ -564,6 +566,7 @@ compile = function(buildObject, callback) {
         if (inWatchMode === true) {
           stdout("ERR! ".red + err);
         } else {
+          utils.unlink(tempFile);
           stderr(6, err);
         }
       }

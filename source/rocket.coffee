@@ -108,14 +108,14 @@ COMPILERS =
         minifier:      "yuicompressor"
         builtIn:       yes
     scss:
-        executable:    "./library/node_modules/sass/bin/scss"
+        executable:    "./library/compilers/sass/bin/scss"
         arguments:     "{input}"
         returnsOutput: yes
         extension:     "scss"
         minifier:      "yuicompressor"
         builtIn:       yes
     sass:
-        executable:    "./library/node_modules/sass/bin/sass"
+        executable:    "./library/compilers/sass/bin/sass"
         arguments:     "{input}"
         returnsOutput: yes
         extension:     "sass"
@@ -490,7 +490,9 @@ compile = (buildObject, callback) ->
         contents += parseNotation(utils.read file) + FILE_SEPARATOR
 
     # Write concat / result temporary
-    tempFile = "/tmp/" + utils.filename buildObject.input[0]
+    tempFileName = utils.filename buildObject.input[0]
+    tempFilePath = utils.dirname buildObject.input[0]
+    tempFile = utils.resolve tempFilePath, "#{tempFileName}.tmp"
     utils.write tempFile, contents
 
     if compiler?
@@ -515,6 +517,7 @@ compile = (buildObject, callback) ->
                 if inWatchMode is yes
                     stdout "ERR! ".red + err
                 else
+                    utils.unlink tempFile
                     stderr 6, err
             if result? and result isnt ""
                 if compiler.returnsOutput is yes
