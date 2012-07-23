@@ -225,7 +225,7 @@ parseConfig = (path) ->
     try
         data = JSON.parse fs.readFileSync filepath
     catch error
-        stderr 2, "Configuration error. Invalid JSON?", !inWatchMode
+        stderr 2, "Configuration error. Invalid JSON?"
 
     # Check for specified basedir
     cwd = (utils.resolve cwd, data.base_dir) if data.base_dir?
@@ -241,7 +241,7 @@ parseConfig = (path) ->
 
     # Make sure the input directory is valid
     unless exist inputDirectory, yes
-        stderr 1, "Input directory does not exist.", !inWatchMode
+        stderr 1, "Input directory does not exist."
         return
 
     # Validate compilers

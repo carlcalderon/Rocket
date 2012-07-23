@@ -251,7 +251,7 @@ parseConfig = function(path) {
   try {
     data = JSON.parse(fs.readFileSync(filepath));
   } catch (error) {
-    stderr(2, "Configuration error. Invalid JSON?", !inWatchMode);
+    stderr(2, "Configuration error. Invalid JSON?");
   }
   if (data.base_dir != null) {
     cwd = utils.resolve(cwd, data.base_dir);
@@ -262,7 +262,7 @@ parseConfig = function(path) {
   inputDirectory = utils.resolve(cwd, data.input_dir);
   customCompilers = data.compilers;
   if (!exist(inputDirectory, true)) {
-    stderr(1, "Input directory does not exist.", !inWatchMode);
+    stderr(1, "Input directory does not exist.");
     return;
   }
   validateCompilers(customCompilers);
