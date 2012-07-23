@@ -298,25 +298,28 @@ parseBuildObject = (object, append = yes) ->
                 input: [sourcePath]
                 minify: false
 
-    # File/folder require action
+    # File/folder/exec require action
     else
-        object.output = utils.resolve outputDirectory, object.output
-        input = []
-        if typeof object.input is "string" then object.input = [object.input]
-        for source in object.input
-            sourcePath = utils.resolve inputDirectory, source
-            if not exist sourcePath, true
-                stderr 1, "#{source} does not exist.", !inWatchMode
-                return
-            parseNotation utils.read sourcePath unless utils.isDirectory sourcePath
-            input.push sourcePath
-        object.input = input
-        object.compile = yes if findCompiler(object)?
-        if append is yes
-            if utils.isDirectory input[0]
-                folders.push object
-            else
-                files.push object
+        if object.exec?
+            files.push object
+        else
+            object.output = utils.resolve outputDirectory, object.output
+            input = []
+            if typeof object.input is "string" then object.input = [object.input]
+            for source in object.input
+                sourcePath = utils.resolve inputDirectory, source
+                if not exist sourcePath, true
+                    stderr 1, "#{source} does not exist.", !inWatchMode
+                    return
+                parseNotation utils.read sourcePath unless utils.isDirectory sourcePath
+                input.push sourcePath
+            object.input = input
+            object.compile = yes if findCompiler(object)?
+            if append is yes
+                if utils.isDirectory input[0]
+                    folders.push object
+                else
+                    files.push object
 
     return
 
@@ -380,12 +383,12 @@ verifyApproval = (message, success) ->
 # Starts the build process
 build = ->
 
-    stdout "\nBuild:".bold + "\t\t" + "+".grey.inverse + " Copy/Concat " + "+".green.inverse + " Compile " + "+".cyan.inverse + " Minify\n"
+    stdout "\nBuild:".bold + "\t\t" + "+".grey.inverse + " Copy/Concat " + "+".green.inverse + " Compile " + "+".cyan.inverse + " Minify " + "+".yellow.inverse + " Exec\n"
 
     # Gather folders
     folderList = folders.slice 0
     for file in files
-        folderList.push
+        unless file.exec then folderList.push
             output: file.output.split(SEPARATOR)[0...-1].join SEPARATOR
 
     # Create the folder structure
@@ -425,11 +428,29 @@ build = ->
         style = "+".grey.inverse
         style = "+".cyan.inverse if file.minify
         style = "+".green.inverse if file.compile
-        stdout "\t" + style + " " + utils.relative cwd, file.output
-        compile file, (result) ->
-            unless result is null
-                utils.write file.output, result
-            if ++i is files.length then do proceed else do next
+        style = "+".yellow.inverse if file.exec
+
+        # Execute command...
+        if file.exec
+            stdout "\t" + style + " " + file.exec
+            options =
+                cwd: outputDirectory
+            options = utils.mergeObjects EXEC_OPTIONS, options
+            utils.exec file.exec, options, (error, result, err) ->
+                if error? and err isnt ""
+                    if inWatchMode is yes
+                        stdout "ERR! ".red + err
+                    else
+                        stderr 6, err
+                else
+                    if ++i is files.length then do proceed else do next
+        # ...or compile file
+        else
+            stdout "\t" + style + " " + utils.relative cwd, file.output
+            compile file, (result) ->
+                unless result is null
+                    utils.write file.output, result
+                if ++i is files.length then do proceed else do next
     do next
 
     return

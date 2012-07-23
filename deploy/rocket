@@ -316,33 +316,37 @@ parseBuildObject = function(object, append) {
       }
     }
   } else {
-    object.output = utils.resolve(outputDirectory, object.output);
-    input = [];
-    if (typeof object.input === "string") {
-      object.input = [object.input];
-    }
-    _ref = object.input;
-    for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-      source = _ref[_i];
-      sourcePath = utils.resolve(inputDirectory, source);
-      if (!exist(sourcePath, true)) {
-        stderr(1, "" + source + " does not exist.", !inWatchMode);
-        return;
+    if (object.exec != null) {
+      files.push(object);
+    } else {
+      object.output = utils.resolve(outputDirectory, object.output);
+      input = [];
+      if (typeof object.input === "string") {
+        object.input = [object.input];
       }
-      if (!utils.isDirectory(sourcePath)) {
-        parseNotation(utils.read(sourcePath));
+      _ref = object.input;
+      for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+        source = _ref[_i];
+        sourcePath = utils.resolve(inputDirectory, source);
+        if (!exist(sourcePath, true)) {
+          stderr(1, "" + source + " does not exist.", !inWatchMode);
+          return;
+        }
+        if (!utils.isDirectory(sourcePath)) {
+          parseNotation(utils.read(sourcePath));
+        }
+        input.push(sourcePath);
       }
-      input.push(sourcePath);
-    }
-    object.input = input;
-    if (findCompiler(object) != null) {
-      object.compile = true;
-    }
-    if (append === true) {
-      if (utils.isDirectory(input[0])) {
-        folders.push(object);
-      } else {
-        files.push(object);
+      object.input = input;
+      if (findCompiler(object) != null) {
+        object.compile = true;
+      }
+      if (append === true) {
+        if (utils.isDirectory(input[0])) {
+          folders.push(object);
+        } else {
+          files.push(object);
+        }
       }
     }
   }
@@ -400,13 +404,15 @@ verifyApproval = function(message, success) {
 
 build = function() {
   var f, file, folder, folderList, i, next, proceed, relativePath, result, source, sourceFolder, target, tree, _i, _j, _k, _l, _len, _len1, _len2, _len3, _len4, _len5, _m, _n, _ref;
-  stdout("\nBuild:".bold + "\t\t" + "+".grey.inverse + " Copy/Concat " + "+".green.inverse + " Compile " + "+".cyan.inverse + " Minify\n");
+  stdout("\nBuild:".bold + "\t\t" + "+".grey.inverse + " Copy/Concat " + "+".green.inverse + " Compile " + "+".cyan.inverse + " Minify " + "+".yellow.inverse + " Exec\n");
   folderList = folders.slice(0);
   for (_i = 0, _len = files.length; _i < _len; _i++) {
     file = files[_i];
-    folderList.push({
-      output: file.output.split(SEPARATOR).slice(0, -1).join(SEPARATOR)
-    });
+    if (!file.exec) {
+      folderList.push({
+        output: file.output.split(SEPARATOR).slice(0, -1).join(SEPARATOR)
+      });
+    }
   }
   for (_j = 0, _len1 = folderList.length; _j < _len1; _j++) {
     folder = folderList[_j];
@@ -456,7 +462,7 @@ build = function() {
   }
   i = 0;
   next = function() {
-    var style;
+    var options, style;
     file = files[i];
     style = "+".grey.inverse;
     if (file.minify) {
@@ -465,17 +471,43 @@ build = function() {
     if (file.compile) {
       style = "+".green.inverse;
     }
-    stdout("\t" + style + " " + utils.relative(cwd, file.output));
-    return compile(file, function(result) {
-      if (result !== null) {
-        utils.write(file.output, result);
-      }
-      if (++i === files.length) {
-        return proceed();
-      } else {
-        return next();
-      }
-    });
+    if (file.exec) {
+      style = "+".yellow.inverse;
+    }
+    if (file.exec) {
+      stdout("\t" + style + " " + file.exec);
+      options = {
+        cwd: outputDirectory
+      };
+      options = utils.mergeObjects(EXEC_OPTIONS, options);
+      return utils.exec(file.exec, options, function(error, result, err) {
+        if ((error != null) && err !== "") {
+          if (inWatchMode === true) {
+            return stdout("ERR! ".red + err);
+          } else {
+            return stderr(6, err);
+          }
+        } else {
+          if (++i === files.length) {
+            return proceed();
+          } else {
+            return next();
+          }
+        }
+      });
+    } else {
+      stdout("\t" + style + " " + utils.relative(cwd, file.output));
+      return compile(file, function(result) {
+        if (result !== null) {
+          utils.write(file.output, result);
+        }
+        if (++i === files.length) {
+          return proceed();
+        } else {
+          return next();
+        }
+      });
+    }
   };
   next();
 };

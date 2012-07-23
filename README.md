@@ -322,6 +322,24 @@ footer.html
 | minify  | As *replace* but also minifies.                  |
 | insert  | Reads each separated row as a file to include.   |
 
+## Commandline execution
+
+Rocket also posess the ability to run custom commands at any time during the build process. These commands are executed from within the specified output directory.
+
+Example below requests a git status and saves it to status.txt.
+
+```json
+{
+	"input_dir": "source",
+	"output_dir": "deploy",
+	"build": [
+		{
+			"exec": "git status > status.txt"
+		}
+	]
+}
+```
+
 ## Rocket Inception
 
 Unless running in watch mode, all builds are made in order of input. This provides a unique way of nesting build objects. 
