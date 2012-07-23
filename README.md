@@ -134,6 +134,24 @@ Files & folders may hold the following fields:
 | compiler    | Custom compiler ID.                 | true     | String                                  |
 | \<custom\>  | Any data used for custom compilers. | true     | Any (99% of the time: String)           |
 
+#### Command line execution
+
+Rocket also posess the ability to run custom commands at any time during the build process. These commands are executed from within the specified output directory and do not require any input or output field.
+
+Example below requests a git status and saves it to status.txt.
+
+```json
+{
+	"input_dir": "source",
+	"output_dir": "deploy",
+	"build": [
+		{
+			"exec": "git status > status.txt"
+		}
+	]
+}
+```
+
 #### Build Object Examples
 
 The following snippet shows how a folder (*images*) and a file (*index.html*) are specified:
@@ -322,23 +340,6 @@ footer.html
 | minify  | As *replace* but also minifies.                  |
 | insert  | Reads each separated row as a file to include.   |
 
-## Commandline execution
-
-Rocket also posess the ability to run custom commands at any time during the build process. These commands are executed from within the specified output directory.
-
-Example below requests a git status and saves it to status.txt.
-
-```json
-{
-	"input_dir": "source",
-	"output_dir": "deploy",
-	"build": [
-		{
-			"exec": "git status > status.txt"
-		}
-	]
-}
-```
 
 ## Rocket Inception
 
