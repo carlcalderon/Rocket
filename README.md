@@ -10,7 +10,7 @@ Rocket is a [node.js][nodejs] based universal compiler, builder & minifier offer
 
 Firstly, you will need [node.js][nodejs]. Once installed, run the following command:
 
- 	sudo git clone -b "deploy" git://github.com/carlcalderon/Rocket.git /usr/local/lib/rocket; sudo ln -s /usr/local/lib/rocket/rocket /usr/local/bin/rocket
+ 	sudo git clone -b "deploy" https://github.com/carlcalderon/Rocket.git /usr/local/lib/rocket; sudo ln -s /usr/local/lib/rocket/rocket /usr/local/bin/rocket
  	
 This will install Rocket to your user directory and make it available everywhere.
 
