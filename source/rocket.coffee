@@ -264,7 +264,14 @@ validateCompilers = (list) ->
 # Parses a list of buildObjects
 parseBuild = (list) ->
 
-    # Go through all files in configuration
+    # Make sure the output directory exist
+    # otherwise create it
+    unless exist outputDirectory, yes
+        folders.push
+            input: ""
+            output: outputDirectory
+
+    # Go through all files and folders in configuration
     parseBuildObject object for object in list
 
     return
@@ -314,7 +321,17 @@ parseBuildObject = (object, append = yes) ->
                 parseNotation utils.read sourcePath unless utils.isDirectory sourcePath
                 input.push sourcePath
             object.input = input
-            object.compile = yes if findCompiler(object)?
+
+            # Find correct compiler
+            if findCompiler(object)?
+                object.compile = yes
+
+            # No compiler was found but object asks for one
+            else if object.compiler?
+                stderr 3, "Compiler #{object.compiler} was not found.", !inWatchMode
+                return
+
+            # Add object to build order
             if append is yes
                 if utils.isDirectory input[0]
                     folders.push object

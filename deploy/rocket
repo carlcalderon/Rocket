@@ -281,6 +281,12 @@ validateCompilers = function(list) {
 
 parseBuild = function(list) {
   var object, _i, _len;
+  if (!exist(outputDirectory, true)) {
+    folders.push({
+      input: "",
+      output: outputDirectory
+    });
+  }
   for (_i = 0, _len = list.length; _i < _len; _i++) {
     object = list[_i];
     parseBuildObject(object);
@@ -340,6 +346,9 @@ parseBuildObject = function(object, append) {
       object.input = input;
       if (findCompiler(object) != null) {
         object.compile = true;
+      } else if (object.compiler != null) {
+        stderr(3, "Compiler " + object.compiler + " was not found.", !inWatchMode);
+        return;
       }
       if (append === true) {
         if (utils.isDirectory(input[0])) {
