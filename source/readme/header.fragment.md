@@ -1,5 +1,5 @@
 
-![Rocket](./icon/128.png)
+![Rocket](http://carlcalderon.github.com/Rocket/icon/128.png)
 
 # Rocket
 
