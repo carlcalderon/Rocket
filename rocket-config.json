@@ -1,0 +1,92 @@
+/*
+    Rocket Build
+
+    Yes, Rocket is actually built using Rocket.
+    Chicken and egg...
+*/
+{
+    "inputDir": "source",
+    "outputDir": "deploy",
+    "defaultBuildOrder": "complete",
+    "buildOrders": [
+
+        // Complete build
+        {
+            "id": "complete",
+            "items": [
+                {
+                    "buildOrder": ["deploy", "readme"]
+                }
+            ]
+        },
+
+        // Compile Rocket
+        {
+            "id": "deploy",
+            "items": [
+
+                // Combine fragments and rocket source
+                {
+                    "input": [
+
+                        "extra/environment.fragment",
+                        "extra/license.fragment",
+                        "rocket.js"
+                    ],
+                    "output": "rocket.js"
+                },
+
+                // copy the compilers
+                "compilers",
+                // ... and node modules
+                "node_modules",
+                // ... and library
+                "lib",
+
+                // Rename the rocket.js to just rocket (avoid folder creation)
+                {
+                    "exec": "mv ../deploy/rocket.js ../deploy/rocket"
+                },
+
+                // Make rocket executable
+                {
+                    "exec": "chmod +x ../deploy/rocket"
+                }
+
+            ]
+        },
+
+        // Construct README
+        {
+            "id": "readme",
+            "items": [
+                {
+                    "input": "../icon",
+                    "output": "icon"
+                },
+                {
+                    "input": [
+                        "readme/header.fragment.md",
+                        "readme/install.fragment.md",
+                        "readme/usage.fragment.md",
+                        "readme/config.fragment.md",
+                        "readme/compilers.fragment.md",
+                        "readme/customcompilers.fragment.md",
+                        "readme/notation.fragment.md",
+                        "readme/inception.fragment.md",
+                        "readme/notes.fragment.md",
+                        "readme/changelog.fragment.md",
+                        "readme/footer.fragment.md"
+                    ],
+                    "output": "README.md"
+                },
+                // Duplicate into root
+                {
+                    "input": "../deploy/README.md",
+                    "output": "../README.md"
+                }
+            ]
+        }
+
+    ]
+}
