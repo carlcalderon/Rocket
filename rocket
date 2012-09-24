@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+
 /*!
    ___           __       __
   / _ \___  ____/ /_____ / /_
@@ -19,704 +20,214 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
+// =============================================================================
+// DEPENDENCIES
+// =============================================================================
+var parse     = require("./lib/parser").parse,
+    schematic = require("./lib/schematic"),
+    global    = require("./lib/global"),
+    errors    = require("./lib/errors"),
+    watch     = require("./lib/watch"),
+    build     = require("./lib/build").build,
+    colorize  = require("./lib/style").colorize,
+    exec      = require("child_process").exec,
+    program   = require("commander"),
+    path      = require("path"),
 
-var BUILD, COMPILERS, DEFAULT_CONFIG_NAME, DOGTAG, EXEC_OPTIONS, FILE_ENCODING, FILE_SEPARATOR, MAJOR_VERSION, MINOR_VERSION, NOTATION, OPTIONS, REGEXP_ARGUMENT, REGEXP_LINK, REGEXP_NOTATION, REGEXP_SCRIPT, REGEXP_TRIM, SEPARATOR, UPDATE_EXEC, VERSION, appendFile, build, colors, compile, configFile, cp, cpdir, crypto, customCompilers, cwd, data, exist, files, findCompiler, folders, fs, inWatchMode, inputDirectory, notation, option, outputDirectory, parseBuild, parseBuildObject, parseConfig, parseNotation, paths, program, publishSchematic, rocket, rocketPath, schematic, stderr, stdout, utils, validateCompilers, verifyApproval, watchMode, wrench, _i, _len;
+    DOGTAG  = "Rocket",
+    MAJOR   = 0,
+    MINOR   = 2,
+    BUILD   = 0,
+    VERSION = [MAJOR, MINOR, BUILD].join("."),
 
-program = require("./library/node_modules/commander");
+    stdout             = global.stdout,
+    stderr             = global.stderr,
+    publish            = schematic.publish,
+    publishIssues      = schematic.publishIssues;
+    publishBuildOrders = schematic.publishBuildOrders,
 
-colors = require("./library/node_modules/colors");
+    projectFile = null,
+    result      = null;
 
-wrench = require("./library/node_modules/wrench");
-
-cp = require("child_process");
-
-crypto = require("crypto");
-
-paths = require("path");
-
-fs = require("fs");
-
-rocket = require("./library/node_modules/rocket");
-
-schematic = rocket.schematic;
-
-notation = rocket.notation;
-
-utils = rocket.utils;
-
-DOGTAG = "Rocket";
-
-MAJOR_VERSION = 0;
-
-MINOR_VERSION = 1;
-
-BUILD = 13;
-
-VERSION = [MAJOR_VERSION, MINOR_VERSION, BUILD].join(".");
-
-SEPARATOR = "/";
-
-FILE_SEPARATOR = "\r\n";
-
-FILE_ENCODING = "utf8";
-
-DEFAULT_CONFIG_NAME = "rocket-config.json";
-
-UPDATE_EXEC = "cd /usr/local/lib/rocket/; sudo git pull -f";
-
-NOTATION = {
-  REPLACE: "replace",
-  REMOVE: "remove",
-  CONCAT: "concat",
-  MINIFY: "minify",
-  INSERT: "insert"
-};
-
-OPTIONS = [["-a, --approve", "automatically approve schematic", false], ["-s, --schematic", "view schematic", false], ["-w, --watch", "sets " + DOGTAG + " in watch mode", false], ["-u, --update", "updates " + DOGTAG + " to the latest version.", false]];
-
-EXEC_OPTIONS = {
-  env: process.env
-};
-
-COMPILERS = {
-  uglify: {
-    executable: "./library/node_modules/uglify-js/bin/uglifyjs",
-    "arguments": "{input}",
-    returnsOutput: true,
-    minifies: "js",
-    builtIn: true
-  },
-  yuicompressor: {
-    prefix: "java -jar -Xss2048k",
-    executable: "./library/compilers/yuicompressor/yuicompressor-2.4.7.jar",
-    "arguments": "--type \"css\" {input}",
-    returnsOutput: true,
-    minifies: "css",
-    builtIn: true
-  },
-  closure: {
-    prefix: "java -jar -Xss2048k",
-    executable: "./library/compilers/google_closure/compiler.jar",
-    "arguments": "{input}",
-    returnsOutput: true,
-    minifier: "uglify",
-    builtIn: true
-  },
-  coffeescript: {
-    executable: "./library/node_modules/coffee-script/bin/coffee",
-    "arguments": "-pc {input}",
-    returnsOutput: true,
-    extension: "coffee",
-    minifier: "uglify",
-    builtIn: true
-  },
-  less: {
-    executable: "./library/node_modules/less/bin/lessc",
-    "arguments": "{input}",
-    returnsOutput: true,
-    extension: "less",
-    minifier: "yuicompressor",
-    builtIn: true
-  },
-  scss: {
-    executable: "./library/compilers/sass/bin/scss",
-    "arguments": "{input}",
-    returnsOutput: true,
-    extension: "scss",
-    minifier: "yuicompressor",
-    builtIn: true
-  },
-  sass: {
-    executable: "./library/compilers/sass/bin/sass",
-    "arguments": "{input}",
-    returnsOutput: true,
-    extension: "sass",
-    minifier: "yuicompressor",
-    builtIn: true
-  }
-};
-
-REGEXP_NOTATION = function() {
-  return /<\!--\s?(rocket|sb):\s?([\S]+)\s?(\S*?)\s?-->([\s\S]*?)<\!--\s?end\s?-->/gm;
-};
-
-REGEXP_ARGUMENT = function() {
-  return /\{([\w-]*?)\}/g;
-};
-
-REGEXP_SCRIPT = function() {
-  return /script.+src="(.+)"/g;
-};
-
-REGEXP_LINK = function() {
-  return /link.+href="(.+)"/g;
-};
-
-REGEXP_TRIM = function() {
-  return /(\S+)/g;
-};
-
-cwd = process.cwd();
-
-data = null;
-
-files = [];
-
-folders = [];
-
-configFile = null;
-
-rocketPath = null;
-
-inWatchMode = false;
-
-inputDirectory = "source";
-
-outputDirectory = "deploy";
-
-customCompilers = [];
-
-cpdir = wrench.copyDirSyncRecursive;
-
-stdout = utils.stdout;
-
-stderr = utils.stderr;
-
-exist = function(path, created) {
-  var file, result, _i, _len;
-  if (created == null) {
-    created = false;
-  }
-  result = utils.exist(path);
-  if (result === false && created === true) {
-    for (_i = 0, _len = files.length; _i < _len; _i++) {
-      file = files[_i];
-      if (file.output === path && utils.isDirectory(path) === false) {
-        result = true;
-      }
-    }
-  }
-  return result;
-};
-
-findCompiler = function(buildObject) {
-  var compiler, compilerList, extensions, file, key, value;
-  compiler = null;
-  if (buildObject.compiler != null) {
-    compiler = customCompilers[buildObject.compiler];
-  } else {
-    compilerList = utils.mergeObjects(COMPILERS, customCompilers);
-    extensions = (function() {
-      var _i, _len, _ref, _results;
-      _ref = buildObject.input;
-      _results = [];
-      for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-        file = _ref[_i];
-        _results.push(utils.extension(file));
-      }
-      return _results;
-    })();
-    for (key in compilerList) {
-      value = compilerList[key];
-      if (extensions.indexOf(value.extension) > -1) {
-        compiler = compilerList[key];
-      }
-      if (compiler != null) {
-        break;
-      }
-    }
-  }
-  return compiler;
-};
-
-parseConfig = function(path) {
-  var filepath;
-  rocketPath = utils.resolve(cwd, process.argv[1]);
-  if (fs.lstatSync(rocketPath).isSymbolicLink() === true) {
-    rocketPath = fs.readlinkSync(rocketPath);
-  }
-  rocketPath = utils.dirname(rocketPath);
-  filepath = utils.resolve(".", path);
-  if (exist(filepath) === true) {
-    if (utils.isDirectory(filepath) === true) {
-      filepath = utils.resolve(filepath, DEFAULT_CONFIG_NAME);
-    }
-  }
-  if (exist(filepath, true) === true) {
-    configFile = filepath;
-  } else {
-    stderr(1, "Configuration file does not exist (" + filepath + ").");
-  }
-  cwd = utils.dirname(filepath);
-  try {
-    data = JSON.parse(fs.readFileSync(filepath));
-  } catch (error) {
-    stderr(2, "Configuration error. Invalid JSON?");
-  }
-  if (data.base_dir != null) {
-    cwd = utils.resolve(cwd, data.base_dir);
-  }
-  files = [];
-  folders = [];
-  outputDirectory = utils.resolve(cwd, data.output_dir);
-  inputDirectory = utils.resolve(cwd, data.input_dir);
-  customCompilers = data.compilers;
-  if (!exist(inputDirectory, true)) {
-    stderr(1, "Input directory does not exist.");
-    return;
-  }
-  validateCompilers(customCompilers);
-  parseBuild(data.build);
-};
-
-validateCompilers = function(list) {
-  var id, options;
-  for (id in list) {
-    options = list[id];
-    if (options.executable == null) {
-      stderr(3, "Compiler \"" + id + "\" is missing \"executable\" field.", !inWatchMode);
-    }
-  }
-};
-
-parseBuild = function(list) {
-  var object, _i, _len;
-  for (_i = 0, _len = list.length; _i < _len; _i++) {
-    object = list[_i];
-    parseBuildObject(object);
-  }
-};
-
-parseBuildObject = function(object, append) {
-  var input, source, sourcePath, targetPath, _i, _len, _ref;
-  if (append == null) {
-    append = true;
-  }
-  if (typeof object === "string") {
-    sourcePath = utils.resolve(inputDirectory, object);
-    targetPath = utils.resolve(outputDirectory, object);
-    if (!exist(sourcePath, true)) {
-      stderr(4, "Parse error\n" + sourcePath + " does not exist.");
-    }
-    if (utils.isDirectory(sourcePath)) {
-      if (append === true) {
-        folders.push({
-          output: targetPath,
-          input: [sourcePath]
-        });
-      }
-    } else {
-      parseNotation(utils.read(sourcePath));
-      if (append === true) {
-        files.push({
-          output: targetPath,
-          input: [sourcePath],
-          minify: false
-        });
-      }
-    }
-  } else {
-    if (object.exec != null) {
-      files.push(object);
-    } else {
-      object.output = utils.resolve(outputDirectory, object.output);
-      input = [];
-      if (typeof object.input === "string") {
-        object.input = [object.input];
-      }
-      _ref = object.input;
-      for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-        source = _ref[_i];
-        sourcePath = utils.resolve(inputDirectory, source);
-        if (!exist(sourcePath, true)) {
-          stderr(1, "" + source + " does not exist.", !inWatchMode);
-          return;
-        }
-        if (!utils.isDirectory(sourcePath)) {
-          parseNotation(utils.read(sourcePath));
-        }
-        input.push(sourcePath);
-      }
-      object.input = input;
-      if (findCompiler(object) != null) {
-        object.compile = true;
-      }
-      if (append === true) {
-        if (utils.isDirectory(input[0])) {
-          folders.push(object);
-        } else {
-          files.push(object);
-        }
-      }
-    }
-  }
-};
-
-parseNotation = function(string) {
-  var result;
-  result = notation.parse(string, inputDirectory);
-  if (result.output != null) {
-    result.output = utils.resolve(outputDirectory, result.output);
-    appendFile({
-      minify: result.minify,
-      output: result.output,
-      input: result.files
-    });
-  }
-  return result.data;
-};
-
-appendFile = function(buildObject) {
-  var file, source, _i, _j, _len, _len1, _ref;
-  for (_i = 0, _len = files.length; _i < _len; _i++) {
-    file = files[_i];
-    if (file.output === buildObject.output) {
-      _ref = buildObject.input;
-      for (_j = 0, _len1 = _ref.length; _j < _len1; _j++) {
-        source = _ref[_j];
-        if (!((file.input.indexOf(utils.resolve(inputDirectory, source))) > -1)) {
-          file.input.push(source);
-        }
-        parseBuildObject(file, false);
-      }
-      return;
-    }
-  }
-  parseBuildObject(buildObject);
-};
-
-publishSchematic = function() {
-  stdout("");
-  stdout(schematic.parse(cwd, inputDirectory, outputDirectory, files, folders));
-  stdout("");
-};
-
-verifyApproval = function(message, success) {
-  program.confirm("\n" + message + " [y/n]: ", function(result) {
-    if (result !== true) {
-      process.exit(0);
-    }
-    if (success != null) {
-      return success();
-    }
-  });
-};
-
-build = function() {
-  var f, file, folder, folderList, i, next, proceed, relativePath, result, source, sourceFolder, target, tree, _i, _j, _k, _l, _len, _len1, _len2, _len3, _len4, _len5, _m, _n, _ref;
-  stdout("\nBuild:".bold + "\t\t" + "+".grey.inverse + " Copy/Concat " + "+".green.inverse + " Compile " + "+".cyan.inverse + " Minify " + "+".yellow.inverse + " Exec\n");
-  folderList = folders.slice(0);
-  for (_i = 0, _len = files.length; _i < _len; _i++) {
-    file = files[_i];
-    if (!file.exec) {
-      folderList.push({
-        output: file.output.split(SEPARATOR).slice(0, -1).join(SEPARATOR)
-      });
-    }
-  }
-  for (_j = 0, _len1 = folderList.length; _j < _len1; _j++) {
-    folder = folderList[_j];
-    relativePath = utils.relative(process.cwd(), folder.output);
-    tree = relativePath.split(SEPARATOR);
-    result = [];
-    for (i = _k = 0, _len2 = tree.length; _k < _len2; i = ++_k) {
-      f = tree[i];
-      result[i] = tree.slice(0, i + 1).join(SEPARATOR);
-    }
-    for (_l = 0, _len3 = result.length; _l < _len3; _l++) {
-      f = result[_l];
-      if (!(f === ".." || f === "")) {
-        if (!exist(f)) {
-          utils.mkdir(f);
-        }
-      }
-    }
-  }
-  if (folders.length !== 0) {
-    stdout("\tFolders:\n".bold);
-  }
-  for (_m = 0, _len4 = folders.length; _m < _len4; _m++) {
-    folder = folders[_m];
-    target = utils.resolve(cwd, folder.output);
-    _ref = folder.input;
-    for (_n = 0, _len5 = _ref.length; _n < _len5; _n++) {
-      sourceFolder = _ref[_n];
-      source = utils.resolve(cwd, sourceFolder);
-      cpdir(source, target, {
-        preserve: true
-      });
-    }
-    stdout("\t" + "+".grey.inverse + " " + utils.relative(cwd, target));
-  }
-  proceed = function() {
-    if (program.watch === true) {
-      watchMode();
-      return stdout("\n" + ("[" + utils.now() + "]").grey + " Complete");
-    } else {
-      stdout("\nComplete".bold);
-      return process.exit(0);
-    }
-  };
-  if (files.length !== 0) {
-    stdout("\n\tFiles:\n".bold);
-  }
-  i = 0;
-  next = function() {
-    var options, style;
-    file = files[i];
-    style = "+".grey.inverse;
-    if (file.minify) {
-      style = "+".cyan.inverse;
-    }
-    if (file.compile) {
-      style = "+".green.inverse;
-    }
-    if (file.exec) {
-      style = "+".yellow.inverse;
-    }
-    if (file.exec) {
-      stdout("\t" + style + " " + file.exec);
-      options = {
-        cwd: outputDirectory
-      };
-      options = utils.mergeObjects(EXEC_OPTIONS, options);
-      return utils.exec(file.exec, options, function(error, result, err) {
-        if ((error != null) && err !== "") {
-          if (inWatchMode === true) {
-            return stdout("ERR! ".red + err);
-          } else {
-            return stderr(6, err);
-          }
-        } else {
-          if (++i === files.length) {
-            return proceed();
-          } else {
-            return next();
-          }
-        }
-      });
-    } else {
-      stdout("\t" + style + " " + utils.relative(cwd, file.output));
-      return compile(file, function(result) {
-        if (result !== null) {
-          utils.write(file.output, result);
-        }
-        if (++i === files.length) {
-          return proceed();
-        } else {
-          return next();
-        }
-      });
-    }
-  };
-  next();
-};
-
-compile = function(buildObject, callback) {
-  var args, compiler, complete, contents, execPath, execution, field, file, minify, sourcePath, tempFile, tempFileName, tempFilePath, value, watchers, _i, _j, _len, _len1, _ref, _ref1;
-  compiler = findCompiler(buildObject);
-  minify = function(inputPath, buildObject, compressor, callback) {
-    var args, compressorList, execPath, execution, field, id, value;
-    if (!(compressor != null)) {
-      compressorList = utils.mergeObjects(COMPILERS, customCompilers);
-      for (id in compressorList) {
-        compiler = compressorList[id];
-        if (utils.extension(buildObject.output) === compiler.minifies) {
-          compressor = compiler;
-        }
-        if (compressor != null) {
-          break;
-        }
-      }
-    }
-    args = compressor["arguments"];
-    args = args.replace("{input}", inputPath);
-    args = args.replace("{output}", buildObject.output);
-    while (field = (REGEXP_ARGUMENT()).exec(args)) {
-      value = buildObject[field[1]];
-      args = args.replace(field[0], value || "");
-    }
-    execPath = compressor.executable;
-    if (compressor.builtIn === true) {
-      execPath = utils.resolve(rocketPath, compressor.executable);
-    }
-    if (compressor.prefix != null) {
-      execPath = compressor.prefix + " " + execPath;
-    }
-    execution = execPath + " " + args;
-    utils.exec(execution, EXEC_OPTIONS, function(error, result, err) {
-      if (result != null) {
-        if (compressor.returnsOutput === true) {
-          return callback(result);
-        } else {
-          return callback(null);
-        }
-      } else if (err != null) {
-        return stderr(5, err);
-      }
-    });
-  };
-  complete = function(result) {
-    if (result == null) {
-      result = null;
-    }
-    utils.unlink(tempFile);
-    callback(result);
-  };
-  contents = "";
-  _ref = buildObject.input;
-  for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-    file = _ref[_i];
-    contents += parseNotation(utils.read(file)) + FILE_SEPARATOR;
-  }
-  tempFileName = utils.filename(buildObject.input[0]);
-  tempFilePath = utils.dirname(buildObject.input[0]);
-  tempFile = utils.resolve(tempFilePath, "" + tempFileName + ".tmp");
-  utils.write(tempFile, contents);
-  if (compiler != null) {
-    if (compiler.returnsOutput == null) {
-      compiler.returnsOutput = compiler["arguments"].indexOf("{output}") > -1;
-    }
-    args = compiler["arguments"];
-    args = args.replace("{input}", "\"" + tempFile + "\"");
-    args = args.replace("{output}", "\"" + buildObject.output + "\"");
-    while (field = (REGEXP_ARGUMENT()).exec(args)) {
-      value = buildObject[field[1]];
-      args = args.replace(field[0], value || "");
-    }
-    execPath = compiler.executable;
-    if (compiler.builtIn === true) {
-      execPath = utils.resolve(rocketPath, compiler.executable);
-    }
-    if (compiler.prefix != null) {
-      execPath = compiler.prefix + " " + execPath;
-    }
-    execution = execPath + " " + args;
-    utils.exec(execution, EXEC_OPTIONS, function(error, result, err) {
-      var compressor;
-      if ((error != null) && err !== "") {
-        if (inWatchMode === true) {
-          stdout("ERR! ".red + err);
-        } else {
-          utils.unlink(tempFile);
-          stderr(6, err);
-        }
-      }
-      if ((result != null) && result !== "") {
-        if (compiler.returnsOutput === true) {
-          if (buildObject.minify === true) {
-            utils.write(tempFile, result);
-            compressor = compiler.minifier != null ? COMPILERS[compiler.minifier] : null;
-            return minify(tempFile, buildObject, compressor, function(compressed) {
-              return complete(compressed);
-            });
-          } else {
-            return complete(result);
-          }
-        } else {
-          return complete(null);
-        }
-      } else {
-        return complete(null);
-      }
-    });
-  } else {
-    if (buildObject.minify === true) {
-      minify(tempFile, buildObject, null, function(compressed) {
-        return complete(compressed);
-      });
-    } else {
-      complete(contents);
-    }
-  }
-  if (program.watch === true) {
-    watchers = [];
-    _ref1 = buildObject.input;
-    for (_j = 0, _len1 = _ref1.length; _j < _len1; _j++) {
-      sourcePath = _ref1[_j];
-      watchers.push(fs.watch(sourcePath, function(event, filename) {
-        var watcher, _k, _len2;
-        for (_k = 0, _len2 = watchers.length; _k < _len2; _k++) {
-          watcher = watchers[_k];
-          watcher.close();
-        }
-        return compile(buildObject, function(result) {
-          if (result !== null) {
-            utils.write(buildObject.output, result);
-          }
-          return stdout(("[" + utils.now() + "]").grey + " Compiled " + utils.relative(cwd, buildObject.output).bold);
-        });
-      }));
-    }
-  }
-};
-
-watchMode = function() {
-  var buildObject, sourcePath, watchFolder, _i, _j, _len, _len1, _ref;
-  if (inWatchMode !== true) {
-    stdout("Entering watch mode... (Abort using CTRL+C)");
-    fs.watch(configFile, function() {
-      stdout(("[" + utils.now() + "]").grey + " Config changed");
-      parseConfig(configFile);
-      return build();
-    });
-  }
-  inWatchMode = true;
-  for (_i = 0, _len = folders.length; _i < _len; _i++) {
-    buildObject = folders[_i];
-    _ref = buildObject.input;
-    for (_j = 0, _len1 = _ref.length; _j < _len1; _j++) {
-      sourcePath = _ref[_j];
-      watchFolder = function(sourcePath, object) {
-        return fs.watch(sourcePath, function(event, folder) {
-          stdout(("[" + utils.now() + "]").grey + " Folder updated: " + utils.relative(cwd, object.output).bold);
-          return cpdir(sourcePath, object.output, {
-            preserve: true
-          });
-        });
-      };
-      watchFolder(sourcePath, buildObject);
-    }
-  }
-};
-
+// =============================================================================
+// PROGRAM
+// =============================================================================
 program.usage("[options] <configuration file>");
-
-program.version(VERSION);
-
-for (_i = 0, _len = OPTIONS.length; _i < _len; _i++) {
-  option = OPTIONS[_i];
-  program.option.apply(program, option);
-}
-
+program.option("-a, --approve",    "automatically approve schematic",  false);
+program.option("-b, --build <id>", "selects a specific build order"         );
+program.option("-i, --ignore",     "ignore errors",                    false);
+program.option("-I, --invisible",  "omit all output including errors", false);
+program.option("-l, --list",       "output build orders",              false);
+program.option("-q, --quiet",      "quiet mode gives less output",     false);
+program.option("-s, --schematic",  "output schematic",                 false);
+program.option("-u, --update",     "updates to the latest version",    false);
+program.option("-v, --version",    "output version number",            false);
+program.option("-w, --watch",      "enable watch mode",                false);
 program.parse(process.argv);
 
-stdout("" + DOGTAG + " " + VERSION);
+// =============================================================================
+// START
+// =============================================================================
 
-if (program.update === true) {
-  utils.exec(UPDATE_EXEC, function(error, result, err) {
-    if (error != null) {
-      return stderr(6, err);
-    } else {
-      return stdout("Update successful.");
-    }
-  });
-} else {
-  if ((program.args != null) && (program.args[0] != null)) {
-    parseConfig(program.args[0]);
-  } else {
-    parseConfig(utils.resolve(cwd, DEFAULT_CONFIG_NAME));
-  }
-  if (program.schematic === true) {
-    publishSchematic();
+// Output version
+if (program.version) {
+
+    stdout(VERSION);
     process.exit(0);
-  }
-  if (program.approve !== true) {
-    if (program.schematic !== true) {
-      publishSchematic();
+
+// Update Rocket
+} else if (program.update) {
+
+    exec("cd /usr/local/lib/rocket/; sudo git pull -f", {env: process.env}, function(error, result, issues) {
+
+        if (!!error) {
+
+            stderr(colorize("ERROR:", "black", "red") + " Unable to update Rocket.\n" + issues);
+
+            process.exit(1);
+
+        } else {
+
+            stdout("Update successful.");
+
+            process.exit(0);
+
+        }
+
+    });
+
+} else {
+
+    if (!!program.invisible) {
+
+        global.mute();
+
     }
-    verifyApproval("Are you sure?", build);
-  } else {
-    build();
-  }
+
+    // Shout out
+    stdout(DOGTAG + " " + VERSION);
+
+    // Find project file
+    projectFile = program.args[0];
+
+    if (!projectFile) {
+
+        projectFile = path.resolve(process.cwd(), "rocket-config.json");
+
+    }
+
+    result = parse(projectFile, program);
+
+    // global.inspect(result);
+
+    // Check for fatal errors. If any is found; kill process even if ignore-flag is set.
+    if (result.errors.length > 0) {
+
+        for (var i = 0, len = result .errors.length; i < len; i++) {
+
+            switch (result.errors[i].id) {
+
+                case errors.INVALID_CONFIGURATION:
+                case errors.FILE_NOT_FOUND:
+                case errors.READ_ERROR:
+
+                    stdout(program.helpInformation());
+
+                    publishIssues(result, program);
+
+                    process.exit(1);
+
+                    break;
+
+            }
+
+        }
+
+    }
+
+    // Output list of build orders
+    if (program.list) {
+
+        publishBuildOrders(result, program);
+        process.exit(0);
+
+    }
+
+    // User approves schematic prior to display
+    if (program.approve || program.invisible) {
+
+        // User wants to view the schematic even though the approve flag
+        if (program.schematic) {
+
+            publish(result, program);
+
+        } else {
+
+            // Publish any issues found
+            publishIssues(result, program);
+
+        }
+
+        // Build
+        build(result, program, function (buildResult) {
+
+            if (program.watch && (buildResult == 0 || program.ignore)) {
+
+                stdout("\n" + "Enter watch mode. Cancel using CTRL+C.");
+
+                watch.start(result, projectFile, program);
+
+            } else {
+
+                process.exit(buildResult);
+
+            }
+
+        });
+
+    // User wants to view schematic
+    } else {
+
+        publish(result, program);
+
+        // Unless the schematic flag is set, continue if user approve
+        if (!program.schematic) {
+
+            // Ask for user permission to continue
+            program.confirm("Do you want to continue? (yes, no): ", function (approve) {
+
+                if (approve == true) {
+
+                    // Separator
+                    stdout("");
+
+                    // Build
+                    build(result, program, function (buildResult) {
+
+                        if (program.watch && (buildResult == 0 || program.ignore)) {
+
+                            stdout("\n" + "Enter watch mode. Cancel using CTRL+C.");
+
+                            watch.start(result, projectFile, program);
+
+                        } else {
+
+                            process.exit(buildResult);
+
+                        }
+
+                    });
+
+                } else {
+
+                    // User did not approve of the schematic
+                    process.exit(0);
+
+                }
+
+            });
+        }
+
+    }
+
 }
