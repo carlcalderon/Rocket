@@ -1,6 +1,6 @@
 ## Installation and Update
 
-Firstly, you will need [node.js][nodejs]. Once installed, run the following command:
+Firstly, you will need [node.js][nodejs] version 0.8.2 or higher. Once installed, run the following command:
 
     sudo git clone -b "deploy" https://github.com/carlcalderon/Rocket.git /usr/local/lib/rocket; sudo ln -s /usr/local/lib/rocket/rocket /usr/local/bin/rocket
 
