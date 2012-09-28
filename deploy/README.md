@@ -266,15 +266,17 @@ Another handy trick Rocket provides is linkage to other Build Orders. Much like 
 
 Rocket comes with a collection of commonly used compilers for your convenience. Furthermore, these compilers are automatically selected and employed by the following schema:
 
-| ID            | Task             | invoke by                       |
-| :------------ | :--------------- | :------------------------------ |
-| uglify        | Minify           | `{minify: true}` on .js output  |
-| yuicompressor | Minify           | `{minify: true}` on .css output |
-| closure       | Minify           | `{compiler: "closure"}`         |
-| coffeescript  | Compile .coffee  | *.coffee as input               |
-| less          | Compile .less    | *.less as input                 |
-| scss          | Compile .scss    | *.scss as input                 |
-| sass          | Compile .sass    | *.sass as input                 |
+| ID            | Task              | invoke by                                       |
+| :------------ | :---------------- | :---------------------------------------------- |
+| uglify        | Minify            | `{minify: true}` on .js output                  |
+| yuicompressor | Minify            | `{minify: true}` on .css output                 |
+| closure       | Minify            | `{compiler: "closure"}`                         |
+| coffeescript  | Compile .coffee   | *.coffee as input                               |
+| less          | Compile .less     | *.less as input                                 |
+| scss          | Compile .scss     | *.scss as input                                 |
+| sass          | Compile .sass     | *.sass as input                                 |
+| jpegoptim     | Image compression | `{minify: true}` on jpg input                   |
+| optipng       | Image compression | `{minify: true}` on png, gif, bmp or tiff input |
 #### Custom Compilers
 
 An **awesome** feature of Rocket is custom compiler configuration.
@@ -345,14 +347,15 @@ The following example shows how a single custom compiler can produce different r
 
 #### Custom Compiler Fields
 
-| Field         | Description                                              | Optional |
-| :------------ | :------------------------------------------------------- | :------: |
-| executable    | Path to executable.                                      | false    |
-| arguments     | Command line arguments.                                  | false    |
-| prefix        | Command line arguments placed prior to executable path.  | true     |
-| returnsOutput | True if compiler output results.                         | true     |
-| extension     | File-extension used to match input files.                | true     |
-| minifies      | File-extension used to match input files when minifying. | true     |
+| Field         | Description                                                 | Optional |
+| :------------ | :---------------------------------------------------------- | :------: |
+| executable    | Path to executable.                                         | false    |
+| arguments     | Command line arguments.                                     | false    |
+| prefix        | Command line arguments placed prior to executable path.     | true     |
+| returnsOutput | True if compiler output results.                            | true     |
+| extensions    | File-extension used to match input files.                   | true     |
+| minifies      | File-extension used to match input files when minifying.    | true     |
+| minifier      | ID of compiler which is used to minify the compiled output. | true     |
 
 ## Notation
 

@@ -68,11 +68,12 @@ The following example shows how a single custom compiler can produce different r
 
 #### Custom Compiler Fields
 
-| Field         | Description                                              | Optional |
-| :------------ | :------------------------------------------------------- | :------: |
-| executable    | Path to executable.                                      | false    |
-| arguments     | Command line arguments.                                  | false    |
-| prefix        | Command line arguments placed prior to executable path.  | true     |
-| returnsOutput | True if compiler output results.                         | true     |
-| extension     | File-extension used to match input files.                | true     |
-| minifies      | File-extension used to match input files when minifying. | true     |
+| Field         | Description                                                 | Optional |
+| :------------ | :---------------------------------------------------------- | :------: |
+| executable    | Path to executable.                                         | false    |
+| arguments     | Command line arguments.                                     | false    |
+| prefix        | Command line arguments placed prior to executable path.     | true     |
+| returnsOutput | True if compiler output results.                            | true     |
+| extensions    | File-extension used to match input files.                   | true     |
+| minifies      | File-extension used to match input files when minifying.    | true     |
+| minifier      | ID of compiler which is used to minify the compiled output. | true     |
