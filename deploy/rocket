@@ -37,7 +37,7 @@ var parse     = require("./lib/parser").parse,
     DOGTAG  = "Rocket",
     MAJOR   = 0,
     MINOR   = 2,
-    BUILD   = 0,
+    BUILD   = 1,
     VERSION = [MAJOR, MINOR, BUILD].join("."),
 
     stdout             = global.stdout,

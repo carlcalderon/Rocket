@@ -18,7 +18,11 @@
 
     // Shorthands
     isDirectory   = global.isDirectory,
-    isAssumedFile = global.isAssumedFile;
+    isAssumedFile = global.isAssumedFile,
+
+    // Storage
+    allCompilers = null,
+    buildOrderIDs = null;
 
     function parse(filepath, program) {
 
@@ -30,8 +34,6 @@
             outputDir         = null,
             defaultBuildOrder = null,
             targetBuildOrder  = null,
-            allCompilers      = null,
-            buildOrderIDs     = [],
             buildOrders       = [],
             result            = {
                 errors:   [],
@@ -93,16 +95,6 @@
             return result;
         }
 
-        // Concatenate builtIn compilers
-        allCompilers = {};
-
-        // Get a list of the built in compilers
-        var builtInCompilers = compilers.getList();
-
-        for (var i = 0, len = builtInCompilers.length; i < len; i++) {
-            allCompilers[builtInCompilers[i]] = compilers[builtInCompilers[i]];
-        };
-
         // Extract basic information (support for < 0.1.14)
         // If none of the paths are defined, run from configuration
         // file path but send warning if input and output are the same.
@@ -121,6 +113,16 @@
         baseDir   = path.resolve(workingDir, baseDir);
         inputDir  = path.resolve(baseDir, inputDir);
         outputDir = path.resolve(baseDir, outputDir);
+
+        // Concatenate builtIn compilers
+        allCompilers = {};
+
+        // Get a list of the built in compilers
+        var builtInCompilers = compilers.getList();
+
+        for (var i = 0, len = builtInCompilers.length; i < len; i++) {
+            allCompilers[builtInCompilers[i]] = compilers[builtInCompilers[i]];
+        };
 
         // Parse compilers
         if (data.compilers != null) {
@@ -148,6 +150,8 @@
 
         }
 
+        buildOrderIDs = [];
+
         // Parse build orders
         if (data.build != null) {
 
@@ -155,7 +159,7 @@
             if (util.isArray(data.build)) {
 
                 // Convert to build order
-                buildOrders.push(parseBuildOrder({id:"build", items:data.build}, inputDir, outputDir, allCompilers));
+                buildOrders.push(parseBuildOrder({id:"build", items:data.build}, inputDir, outputDir));
 
                 // Set the default build order to the above id
                 defaultBuildOrder = "build";
@@ -191,7 +195,7 @@
                         for (i = 0, len = data.buildOrders.length; i < len; i++) {
 
                             // Push parsed build order to buildOrders list
-                            buildOrders.push(parseBuildOrder(data.buildOrders[i], inputDir, outputDir, allCompilers, buildOrderIDs));
+                            buildOrders.push(parseBuildOrder(data.buildOrders[i], inputDir, outputDir));
 
                         }
 
@@ -275,7 +279,7 @@
 
     }
 
-    function parseBuildOrder(input, inputDir, outputDir, allCompilers, buildOrderIDs) {
+    function parseBuildOrder(input, inputDir, outputDir) {
 
         var id     = input.id,
             items  = [],
@@ -305,7 +309,7 @@
 
                     for (var i = 0, len = input.items.length; i < len; i++) {
 
-                        items.push(parseBuildItem(input.items[i], inputDir, outputDir, allCompilers, buildOrderIDs));
+                        items.push(parseBuildItem(input.items[i], inputDir, outputDir));
 
                     }
 
@@ -348,7 +352,7 @@
 
     }
 
-    function parseBuildItem(item, inputDir, outputDir, allCompilers, buildOrderIDs) {
+    function parseBuildItem(item, inputDir, outputDir) {
 
         // Construct result
         var result = {
@@ -506,7 +510,6 @@
 
                     // Check if the input path exist right now
                     if (fs.existsSync(inputPath)) {
-
 
                         // if it's a directory, replace the current input item with
                         // an array of the children instead.
@@ -667,6 +670,7 @@
 
     }
 
-    output.parse = parse;
+    output.parse          = parse;
+    output.parseBuildItem = parseBuildItem;
 
 })(exports);

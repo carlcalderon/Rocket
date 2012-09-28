@@ -10,7 +10,7 @@
         list = [
             "uglify",       "yuicompressor", "closure",
             "coffeescript", "less",          "scss",
-            "sass"
+            "sass", "jpegoptim", "optipng"
         ],
 
     REGEXP_ARGUMENT     = function() { return /\{(\S*)\}/i; },
@@ -104,6 +104,32 @@
         extensions: ["sass"],
         minifies: null,
         minifier: "yuicompressor",
+        builtIn: true
+
+    };
+
+    output.jpegoptim = {
+
+        prefix: "cp {input} {output};",
+        executable: "./compilers/jpegoptim/jpegoptim",
+        arguments: "{output} -o --dest {outputPath}  --strip-all",
+        returnsOutput: false,
+        extensions: null,
+        minifies: ["jpeg", "jpg"],
+        minifier: null,
+        builtIn: true
+
+    };
+
+    output.optipng = {
+
+        prefix: "rm -f {output};",
+        executable: "./compilers/optipng/optipng",
+        arguments: "-strip all -clobber -q -force -o2 -out {output} {input}",
+        returnsOutput: false,
+        extensions: null,
+        minifies: ["png", "gif", "bmp", "tiff"],
+        minifier: null,
         builtIn: true
 
     };
@@ -308,16 +334,14 @@
 
         var result  = [],
             args    = compiler.arguments,
-            block   = null,
-            content = null;
+            prefix  = compiler.prefix;
 
-        if (!!compiler.prefix) { result.push(compiler.prefix); }
+        function argumentReplace(string) {
 
-        result.push(path.resolve(process.cwd(), compiler.executable));
+            var block   = null,
+                content = null;
 
-        if (!!compiler.arguments) {
-
-            while ((block = REGEXP_ARGUMENT().exec(args)) != null) {
+            while ((block = REGEXP_ARGUMENT().exec(string)) != null) {
 
                 switch (block[1].toLowerCase()) {
 
@@ -333,6 +357,18 @@
 
                         break;
 
+                    case "outputpath" :
+
+                        content = "\"" + path.dirname(input.output) + "\"";
+
+                        break;
+
+                    case "inputpath" :
+
+                        content = "\"" + path.dirname(input.input) + "\"";
+
+                        break;
+
                     default :
 
                         content = input[block[1]] || "";
@@ -341,9 +377,26 @@
 
                 }
 
-                args = args.replace(block[0], content);
+                string = string.replace(block[0], content);
 
             }
+
+            return string;
+        }
+
+        if (!!compiler.prefix) {
+
+            prefix = argumentReplace(prefix);
+
+            result.push(prefix);
+
+        }
+
+        result.push(path.resolve(process.cwd(), compiler.executable));
+
+        if (!!compiler.arguments) {
+
+            args = argumentReplace(args);
 
             result.push(args);
 
@@ -372,9 +425,10 @@
 
     }
 
-    output.getList = getList;
-    output.match   = match;
-    output.compile = compile;
-    output.minify  = minify;
+    output.getList        = getList;
+    output.match          = match;
+    output.compile        = compile;
+    output.minify         = minify;
+    output.getMinifierFor = getMinifierFor;
 
 })(exports);
