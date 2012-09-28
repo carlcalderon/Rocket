@@ -35,6 +35,7 @@ program.option("-a, --approve",    "automatically approve schematic",  false);
 program.option("-b, --build <id>", "selects a specific build order"         );
 program.option("-i, --ignore",     "ignore errors",                    false);
 program.option("-I, --invisible",  "omit all output including errors", false);
+program.option("-j, --json",       "output schematic as json",         false);
 program.option("-l, --list",       "output build orders",              false);
 program.option("-q, --quiet",      "quiet mode gives less output",     false);
 program.option("-s, --schematic",  "output schematic",                 false);
@@ -82,9 +83,6 @@ if (program.version) {
 
     }
 
-    // Shout out
-    stdout(DOGTAG + " " + VERSION);
-
     // Find project file
     projectFile = program.args[0];
 
@@ -94,9 +92,19 @@ if (program.version) {
 
     }
 
+    // Parse config
     result = parse(projectFile, program);
 
-    // global.inspect(result);
+    // Output JSON
+    if (program.json) {
+
+        global.inspect(result, false, null, false);
+        process.exit(0);
+
+    }
+
+    // Shout out
+    stdout(DOGTAG + " " + VERSION);
 
     // Check for fatal errors. If any is found; kill process even if ignore-flag is set.
     if (result.errors.length > 0) {
