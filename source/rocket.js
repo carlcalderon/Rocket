@@ -3,6 +3,7 @@
 // =============================================================================
 var parse     = require("./lib/parser").parse,
     schematic = require("./lib/schematic"),
+    tokenize  = require("./lib/token").tokenize,
     global    = require("./lib/global"),
     errors    = require("./lib/errors"),
     watch     = require("./lib/watch"),
@@ -39,6 +40,7 @@ program.option("-j, --json",       "output schematic as json",         false);
 program.option("-l, --list",       "output build orders",              false);
 program.option("-q, --quiet",      "quiet mode gives less output",     false);
 program.option("-s, --schematic",  "output schematic",                 false);
+program.option("-t, --tokens",     "output schematic as tokens",       false);
 program.option("-u, --update",     "updates to the latest version",    false);
 program.option("-v, --version",    "output version number",            false);
 program.option("-w, --watch",      "enable watch mode",                false);
@@ -99,6 +101,14 @@ if (program.version) {
     if (program.json) {
 
         global.inspect(result, false, null, false);
+        process.exit(0);
+
+    }
+
+    // Output tokens
+    if (program.tokens) {
+
+        tokenize(result, program);
         process.exit(0);
 
     }
