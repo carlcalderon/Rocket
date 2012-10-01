@@ -46,6 +46,14 @@
         // Make sure the configuration file exist
         if (fs.existsSync(filepath)) {
 
+            // If the input is a directory, search for the config file.
+            if (isDirectory(filepath)) {
+
+                filepath = path.resolve(filepath, "rocket-config.json");
+
+            }
+
+            // Extract the config directory path
             workingDir = path.dirname(path.resolve(".", filepath));
 
             try {
@@ -503,7 +511,7 @@
                 var inputPath = null;
 
                 // Loop through all defined inputs and recursively construct
-                // arrays of folder which contain children.
+                // arrays of folders which contain children.
                 for (var i = 0, len = inputPaths.length; i < len; i++) {
 
                     inputPath = inputPaths[i];
