@@ -9,8 +9,6 @@
         global    = require("./global"),
         itemTypes = require("./itemtypes"),
         compilers = require("./compilers"),
-        colorize  = require("./style").colorize,
-        bold      = require("./style").bold,
 
         stdout      = global.stdout,
 
@@ -171,8 +169,6 @@
 
                 case itemTypes.DIRECTORY :
 
-                    prefix = colorize("/", "black", "white");
-
                     stdout("\t\tDIRECTORY [" + input.output + "]");
 
                     for (i = 0, len = input.input.length; i < len; i++) {
@@ -184,20 +180,6 @@
                     break;
 
                 case itemTypes.FILE :
-
-                    if (input.minify) {
-
-                        prefix = colorize("%", "black", "cyan");
-
-                    } else if (input.compiler) {
-
-                        prefix = colorize("+", "black", "green");
-
-                    } else {
-
-                        prefix = colorize("+", "grey", "black", "inverse");
-
-                    }
 
                     stdout("\t\t FILE [" + [input.compiler, input.minify, input.output].join(";") + "]");
 
