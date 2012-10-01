@@ -93,6 +93,14 @@
 
     }
 
+    function isImage(input) {
+        return ([
+            ".jpeg", ".jpg",
+            ".png",  ".gif",
+            ".bmp",  ".tiff"
+            ].indexOf(path.extname(input).toLowerCase()) > -1);
+    }
+
     function tab(count) {
 
         var result = "";
@@ -124,6 +132,7 @@
     output.flatten       = flatten;
     output.splitLines    = splitLines;
     output.isRaw         = isRaw;
+    output.isImage       = isImage;
     output.isDirectory   = isDirectory;
     output.isAssumedFile = isAssumedFile;
 

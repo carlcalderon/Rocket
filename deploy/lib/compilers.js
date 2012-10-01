@@ -332,9 +332,11 @@
 
     function getExecStatement(compiler, filepath, input) {
 
-        var result  = [],
-            args    = compiler.arguments,
-            prefix  = compiler.prefix;
+        var result     = [],
+            args       = compiler.arguments,
+            prefix     = compiler.prefix
+            rocketPath = path.resolve(process.cwd(), process.argv[1]),
+            execPath   = compiler.executable;
 
         function argumentReplace(string) {
 
@@ -384,6 +386,12 @@
             return string;
         }
 
+        // Get the proper process directory
+        if (fs.lstatSync(rocketPath).isSymbolicLink()) {
+            rocketPath = fs.readlinkSync(rocketPath);
+        }
+        rocketPath = path.dirname(rocketPath);
+
         if (!!compiler.prefix) {
 
             prefix = argumentReplace(prefix);
@@ -392,7 +400,13 @@
 
         }
 
-        result.push(path.resolve(process.cwd(), compiler.executable));
+        if (!!compiler.builtIn) {
+            execPath = path.resolve(rocketPath, compiler.executable);
+        } else {
+            execPath = path.resolve(process.cwd(), compiler.executable);
+        }
+
+        result.push(execPath);
 
         if (!!compiler.arguments) {
 

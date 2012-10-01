@@ -22,6 +22,7 @@
         stderr      = global.stderr,
         stdwarn     = global.stdwarn,
         isRaw       = global.isRaw,
+        isImage     = global.isImage,
         isDirectory = global.isDirectory,
 
         FILE_SEPARATOR  = "\r\n",
@@ -355,19 +356,42 @@
 
                     (function step(list, index) {
 
-                        buildItem(list[index], program, inputDir, outputDir, function() {
+                        if (!!input.minify && isImage(list[index].output)) {
 
-                            if (index == list.length - 1) {
+                            buildItem(list[index], program, inputDir, outputDir, function() {
 
-                                callback(0);
+                                if (index == list.length - 1) {
 
-                            } else {
+                                    callback(0);
 
-                                step(list, index + 1);
+                                } else {
 
-                            }
+                                    step(list, index + 1);
 
-                        })
+                                }
+
+                            });
+
+                        } else {
+
+                            var contents = fs.readFileSync(list[index].input[0]);
+                            try {
+
+                                fs.writeFileSync(list[index].output, contents);
+
+                                if (index == list.length - 1) {
+
+                                    callback(0);
+
+                                } else {
+
+                                    step(list, index + 1);
+
+                                }
+
+                            } catch (e) { }
+
+                        }
 
                     })(list, 0);
 
