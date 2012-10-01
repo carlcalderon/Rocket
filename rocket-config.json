@@ -15,7 +15,7 @@
             "id": "complete",
             "items": [
                 {
-                    "buildOrder": ["deploy", "readme"]
+                    "buildOrder": ["deploy", "permissions", "readme"]
                 }
             ]
         },
@@ -53,6 +53,38 @@
                     "exec": "chmod +x ../deploy/rocket"
                 }
 
+            ]
+        },
+        {
+            "id": "permissions",
+            "items": [
+                {
+                    "exec": "chmod +x ../deploy/compilers/jpegoptim/jpegoptim"
+                },
+                {
+                    "exec": "chmod +x ../deploy/compilers/optipng/optipng"
+                },
+                {
+                    "exec": "chmod +x ../deploy/compilers/google_closure/compiler.jar"
+                },
+                {
+                    "exec": "chmod -RH +x ../deploy/compilers/sass/bin/"
+                },
+                {
+                    "exec": "chmod +x ../deploy/compilers/yuicompressor/yuicompressor-2.4.7.jar"
+                },
+                {
+                    "exec": "chmod -RH +x ../deploy/node_modules/.bin/"
+                },
+                {
+                    "exec": "chmod -RH +x ../deploy/node_modules/coffee-script/bin/"
+                },
+                {
+                    "exec": "chmod -RH +x ../deploy/node_modules/less/bin/"
+                },
+                {
+                    "exec": "chmod -RH +x ../deploy/node_modules/uglify-js/bin/"
+                }
             ]
         },
 
