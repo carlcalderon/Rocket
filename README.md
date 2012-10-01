@@ -443,6 +443,13 @@ Rocket will always be in favour of developers and evolve along side the communit
 
 ## Change Log
 
+### 0.2.1
+SEP 28, 2012
+
+* Image compression (optipng and jpegoptim)
+* Output JSON through `-j` or `--json`
+* Output tokens through `-t` or `--tokens`
+
 ### 0.2.0
 SEP 24, 2012
 
