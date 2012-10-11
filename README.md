@@ -7,6 +7,7 @@ A simple yet sophisticated tool for building, compiling & minifying projects.
 
 ## What is Rocket?
 Rocket is a [node.js][nodejs] based universal compiler, builder & minifier offering functionality similar to [CodeKit][codekit] and [Springboard][springboard]. The sugar that separates Rocket from *the rest* lies at the core of its flexibility. Read on for guaranteed gasps…
+
 ## Installation and Update
 
 Firstly, you will need [node.js][nodejs] version 0.8.2 or higher. Once installed, run the following command:
@@ -22,6 +23,7 @@ To update Rocket, open up the terminal and run:
 [nodejs]: http://nodejs.org/
 [codekit]: http://incident57.com/codekit/
 [springboard]: https://github.com/soulwire/Springboard
+
 ## Usage
 
 To use Rocket, simply open up the terminal and run:
@@ -43,6 +45,7 @@ To use Rocket, simply open up the terminal and run:
 | -u        | --update      | updates to the latest version     |
 | -v        | --version     | output version number             |
 | -w        | --watch       | enable watch mode                 |
+
 ## Configuration files
 
 Rocket's only requirement is a single JSON configuration file. It really is that simple!
@@ -281,6 +284,7 @@ Sometimes you find yourself the situation where you would like to perform an add
     }
 }
 ```
+
 #### Packaged Compilers
 
 Rocket comes with a collection of commonly used compilers for your convenience. Furthermore, these compilers are automatically selected and employed by the following schema:
@@ -296,6 +300,7 @@ Rocket comes with a collection of commonly used compilers for your convenience. 
 | sass          | Compile .sass     | *.sass as input                                 |
 | jpegoptim     | Image compression | `{minify: true}` on jpg input                   |
 | optipng       | Image compression | `{minify: true}` on png, gif, bmp or tiff input |
+
 #### Custom Compilers
 
 An **awesome** feature of Rocket is custom compiler configuration.
@@ -423,6 +428,7 @@ footer.html
 | concat  | Combines the listed files.                       |
 | minify  | As *replace* but also minifies.                  |
 | insert  | Reads each separated row as a file to include.   |
+
 ## Rocket Inception
 
 Unless running in watch mode, all builds are made in order of input. This provides a unique way of nesting build objects. 
@@ -452,6 +458,7 @@ Pretty awesome right? Now imagine the following scenario:
 1. Rocket performs a build which constructs a new configuration file.
 2. In the same build, a new Rocket instance is run as a custom compiler with the `-a` flag targeting the generated configuration file.
 3. The new Rocket instance could then perform step 1 and so on and so on...
+
 ## Endless Possibilities
 
 Combine custom compilers with the order of compilation and it is easy to see that Rocket can perform the most amazing things. With minimal effort, you can setup a complete build order including LESS, CoffeeScript, compression and even deployment.
@@ -488,6 +495,7 @@ SEP 24, 2012
 * Modular configuration
 * Better output type pattern
 * Elaborated schematic output
+
 ## Author
 
 Carl Calderon: [@carlcalderon](http://twitter.com/carlcalderon)
