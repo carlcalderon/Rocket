@@ -163,9 +163,27 @@
 
             tabs = tabs || 0;
 
-            var len    = 0,
-                i      = 0,
-                prefix = " ";
+            var len        = 0,
+                i          = 0,
+                prefix     = " ",
+                hookBefore = "",
+                hookAfter  = "";
+
+            if (!!input.hooks) {
+
+                if (!!input.hooks.before) {
+
+                    hookBefore = colorize("(" + input.hooks.before.buildOrder.join(", ") + ") ", "grey");
+
+                }
+
+                if (!!input.hooks.after) {
+
+                    hookAfter = colorize(" (" + input.hooks.after.buildOrder.join(", ") + ")", "grey");
+
+                }
+
+            }
 
             switch (input.type) {
 
@@ -175,7 +193,7 @@
 
                         prefix = colorize(">", "green", "black");
 
-                        stdout(tab(tabs), prefix, input.buildOrder.join(", "));
+                        stdout(tab(tabs), prefix, hookBefore + input.buildOrder.join(", ") + hookAfter);
 
                     }
 
@@ -187,7 +205,7 @@
 
                     if (!!input.output) {
 
-                        stdout(tab(tabs), prefix, truncate(path.relative(outputDir, input.output)));
+                        stdout(tab(tabs), prefix, hookBefore + truncate(path.relative(outputDir, input.output)) + hookAfter);
 
                         if (!program.quiet) {
 
@@ -197,7 +215,7 @@
 
                     } else {
 
-                        stdout(tab(tabs), prefix, truncate(input.exec));
+                        stdout(tab(tabs), prefix, hookBefore + truncate(input.exec) + hookAfter);
 
                     }
 
@@ -207,7 +225,7 @@
 
                     prefix = colorize("/", "black", "white");
 
-                    stdout(tab(tabs), prefix, truncate(path.relative(outputDir, input.output)));
+                    stdout(tab(tabs), prefix, hookBefore + truncate(path.relative(outputDir, input.output)) + hookAfter);
 
                     if (!program.quiet) {
 
@@ -238,7 +256,7 @@
 
                     }
 
-                    stdout(tab(tabs), prefix, truncate(path.relative(outputDir, input.output)) + ((!!input.compiler) ? (" (" + input.compiler + ")") : ""));
+                    stdout(tab(tabs), prefix, hookBefore + truncate(path.relative(outputDir, input.output)) + ((!!input.compiler) ? (" (" + input.compiler + ")") : "") + hookAfter);
 
                     // Combine found notation sources
                     var inputs = input.input;

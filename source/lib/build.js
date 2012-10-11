@@ -101,47 +101,59 @@
 
     function buildItem(input, program, inputDir, outputDir, callback) {
 
-        switch (input.type) {
+        function performAction(input, program, inputDir, outputDir, callback) {
 
-            case itemTypes.FILE :
+            switch (input.type) {
 
-                var prefix = null;
+                case itemTypes.FILE :
 
-                if (input.minify) {          prefix = colorize("%", "black", "cyan");            }
-                else if (input.compiler) {   prefix = colorize("+", "black", "green");           }
-                else {                       prefix = colorize("+", "grey", "black", "inverse"); }
+                    var prefix = null;
 
-                // Tell
-                if (!program.quiet) {
+                    if (input.minify) {          prefix = colorize("%", "black", "cyan");            }
+                    else if (input.compiler) {   prefix = colorize("+", "black", "green");           }
+                    else {                       prefix = colorize("+", "grey", "black", "inverse"); }
 
-                    if (!program.watch || (program.watch && !program.buildSuccess)) {
+                    // Tell
+                    if (!program.quiet) {
 
-                        stdout(tab(1), prefix, path.relative(outputDir, input.output));
+                        if (!program.watch || (program.watch && !program.buildSuccess)) {
+
+                            stdout(tab(1), prefix, path.relative(outputDir, input.output));
+
+                        }
 
                     }
 
-                }
+                    // Create output folder
+                    wrench.mkdirSyncRecursive(path.dirname(input.output));
 
-                // Create output folder
-                wrench.mkdirSyncRecursive(path.dirname(input.output));
+                    // flatten and combine inputs
+                    var flat      = global.flatten(input.input),
+                        content   = [];
 
-                // flatten and combine inputs
-                var flat      = global.flatten(input.input),
-                    content   = [];
+                    // TODO: combine content / readFileSync if statements. This is ugly...
+                    for (var i = 0, len = flat.length; i < len; i++) {
 
-                // TODO: combine content / readFileSync if statements. This is ugly...
-                for (var i = 0, len = flat.length; i < len; i++) {
+                        if (input.notation != null) {
 
-                    if (input.notation != null) {
+                            if (i < input.notation.length) {
 
-                        if (i < input.notation.length) {
+                                if (input.notation[i] != null) {
 
-                            if (input.notation[i] != null) {
+                                    // notation contents
+                                    content.push(input.notation[i].markup);
 
-                                // notation contents
-                                content.push(input.notation[i].markup);
+                                } else if (isRaw(input.output)) {
 
-                            } else if (isRaw(input.output)) {
+                                    content.push(fs.readFileSync(flat[i]));
+
+                                } else {
+
+                                    content.push(fs.readFileSync(flat[i], "utf8"));
+
+                                }
+
+                            }  else if (isRaw(input.output)) {
 
                                 content.push(fs.readFileSync(flat[i]));
 
@@ -151,7 +163,7 @@
 
                             }
 
-                        }  else if (isRaw(input.output)) {
+                        } else if (isRaw(input.output)) {
 
                             content.push(fs.readFileSync(flat[i]));
 
@@ -161,190 +173,275 @@
 
                         }
 
-                    } else if (isRaw(input.output)) {
+                    }
 
-                        content.push(fs.readFileSync(flat[i]));
+                    // File require compilation or minification
+                    if (!!input.compiler || !!input.minify) {
+
+                        // Write temp file (in first input directory)
+                        var filepath = path.resolve(path.dirname(flat[0]), ".tmp_" + path.basename(input.output));
+
+                        if (isRaw(input.output)) {
+
+                            writeRaw(content, filepath);
+
+                        } else {
+
+                            write(content.join(FILE_SEPARATOR), filepath);
+
+                        }
+
+                        if (!!input.compiler) {
+
+                            compilers.compile(filepath, input, function(result, out, issues) {
+
+                                try {
+
+                                    fs.unlinkSync(filepath);
+
+                                } catch (e) {
+
+                                    // ignore, file already removed
+
+                                }
+
+                                if (result != 0) {
+
+                                    out = getError(errors.COMPILE_ERROR, out || issues, program);
+
+                                    if (program.ignore || program.watch) { stdout(out); }
+                                    else { stderr(out); process.exit(1); }
+
+                                }
+
+                                callback(result);
+
+                            });
+
+                        } else if (!!input.minify) {
+
+                            compilers.minify(filepath, input, function(result, out, issues) {
+
+                                try {
+
+                                    fs.unlinkSync(filepath);
+
+                                } catch (e) {
+
+                                    // ignore
+
+                                }
+
+                                if (result != 0) {
+
+                                    out = getError(errors.COMPILE_ERROR, out || issues, program);
+
+                                    if (program.ignore) { stdout(out); }
+                                    else { stderr(out); process.exit(1); }
+
+                                }
+
+                                callback(result);
+
+                            });
+
+                        }
 
                     } else {
 
-                        content.push(fs.readFileSync(flat[i], "utf8"));
+                        if (isRaw(input.output)) {
+
+                            writeRaw(content, input.output);
+
+                        } else {
+
+                            write(content.join(FILE_SEPARATOR), input.output);
+
+                        }
+                        callback(0);
 
                     }
 
-                }
+                    break;
 
-                // File require compilation or minification
-                if (!!input.compiler || !!input.minify) {
+                case itemTypes.DIRECTORY :
 
-                    // Write temp file (in first input directory)
-                    var filepath = path.resolve(path.dirname(flat[0]), ".tmp_" + path.basename(input.output));
+                    // Tell
+                    if (!program.quiet) {
 
-                    if (isRaw(input.output)) {
+                        if (!program.watch || (program.watch && !program.buildSuccess)) {
 
-                        writeRaw(content, filepath);
+                            stdout(tab(1), colorize("/", "black", "white"), path.relative(outputDir, input.output));
 
+                        }
+
+                    }
+
+                    // If we dont want to minify anything, just copy the whole thing.
+                    if (!input.minify) {
+
+                        try {
+
+                            for (var i = 0, len = input.input.length; i < len; i++) {
+
+                                wrench.copyDirSyncRecursive(input.input[i], input.output, {preserve: true});
+
+                            }
+
+                            callback(0);
+
+                        } catch (e) {
+
+                            if ((program.watch && program.buildSuccess) || program.ignore) {
+
+                                stdout(getError(errors.DIRECTORY_ERROR, error, program));
+
+                                callback(1);
+
+                            } else {
+
+                                stderr(getError(errors.DIRECTORY_ERROR, error, program));
+
+                                process.exit(1);
+
+                            }
+
+                        }
+
+                    // Something needs to be compressed...
                     } else {
 
-                        write(content.join(FILE_SEPARATOR), filepath);
+                        try {
 
-                    }
+                            // Create output directory
+                            wrench.mkdirSyncRecursive(input.output);
 
-                    if (!!input.compiler) {
+                            // Get a list of all inputs as files (folders -> files)
+                            var i    = 0,
+                                len  = input.input.length,
+                                item = null,
+                                list = [],
+                                inputPath  = null,
+                                outputPath = null;
 
-                        compilers.compile(filepath, input, function(result, out, issues) {
+                            for (; i < len; i++) {
 
-                            try {
+                                item = input.input[i];
 
-                                fs.unlinkSync(filepath);
+                                if (fs.existsSync(item)) {
 
-                            } catch (e) {
+                                    if (isDirectory(item)) {
 
-                                // ignore, file already removed
+                                        // Get a list of the complete folder structure,
+                                        // correct it and append to global list
+                                        wrench.readdirSyncRecursive(item).forEach(function (filepath) {
 
-                            }
+                                            inputPath  = path.resolve(item, filepath);
 
-                            if (result != 0) {
+                                            if (!isDirectory(inputPath)) {
 
-                                out = getError(errors.COMPILE_ERROR, out || issues, program);
+                                                outputPath = path.resolve(input.output, filepath);
 
-                                if (program.ignore || program.watch) { stdout(out); }
-                                else { stderr(out); process.exit(1); }
+                                                list.push(parser.parseBuildItem({
+                                                    input:  inputPath,
+                                                    output: outputPath,
+                                                    minify: input.minify
+                                                },inputDir, outputDir));
 
-                            }
+                                            }
 
-                            callback(result);
+                                        });
 
-                        });
+                                    } else {
 
-                    } else if (!!input.minify) {
-
-                        compilers.minify(filepath, input, function(result, out, issues) {
-
-                            try {
-
-                                fs.unlinkSync(filepath);
-
-                            } catch (e) {
-
-                                // ignore
-
-                            }
-
-                            if (result != 0) {
-
-                                out = getError(errors.COMPILE_ERROR, out || issues, program);
-
-                                if (program.ignore) { stdout(out); }
-                                else { stderr(out); process.exit(1); }
-
-                            }
-
-                            callback(result);
-
-                        });
-
-                    }
-
-                } else {
-
-                    if (isRaw(input.output)) {
-
-                        writeRaw(content, input.output);
-
-                    } else {
-
-                        write(content.join(FILE_SEPARATOR), input.output);
-
-                    }
-                    callback(0);
-
-                }
-
-                break;
-
-            case itemTypes.DIRECTORY :
-
-                // Tell
-                if (!program.quiet) {
-
-                    if (!program.watch || (program.watch && !program.buildSuccess)) {
-
-                        stdout(tab(1), colorize("/", "black", "white"), path.relative(outputDir, input.output));
-
-                    }
-
-                }
-
-                try {
-
-                    // Create output directory
-                    wrench.mkdirSyncRecursive(input.output);
-
-                    // Get a list of all inputs as files (folders -> files)
-                    var i    = 0,
-                        len  = input.input.length,
-                        item = null,
-                        list = [],
-                        inputPath  = null,
-                        outputPath = null;
-
-                    for (; i < len; i++) {
-
-                        item = input.input[i];
-
-                        if (fs.existsSync(item)) {
-
-                            if (isDirectory(item)) {
-
-                                // Get a list of the complete folder structure,
-                                // correct it and append to global list
-                                wrench.readdirSyncRecursive(item).forEach(function (filepath) {
-
-                                    inputPath  = path.resolve(item, filepath);
-
-                                    if (!isDirectory(inputPath)) {
-
+                                        inputPath  = item,
                                         outputPath = path.resolve(input.output, filepath);
 
                                         list.push(parser.parseBuildItem({
                                             input:  inputPath,
                                             output: outputPath,
                                             minify: input.minify
-                                        },inputDir, outputDir));
+                                        }));
 
                                     }
 
-                                });
+                                // File or folder does not exist
+                                } else {
 
-                            } else {
+                                    var error = "The file or folder \"" + item + "\" does not exist.";
 
-                                inputPath  = item,
-                                outputPath = path.resolve(input.output, filepath);
+                                    if ((program.watch && program.buildSuccess) || program.ignore) {
 
-                                list.push(parser.parseBuildItem({
-                                    input:  inputPath,
-                                    output: outputPath,
-                                    minify: input.minify
-                                }));
+                                        stdout(getError(errors.FILE_NOT_FOUND, error, program));
+
+                                        callback(1);
+
+                                        break;
+
+                                    } else {
+
+                                        stderr(getError(errors.FILE_NOT_FOUND, error, program));
+
+                                        process.exit(1);
+
+                                    }
+
+                                }
 
                             }
 
-                        // File or folder does not exist
-                        } else {
+                            (function step(list, index) {
 
-                            var error = "The file or folder \"" + item + "\" does not exist.";
+                                if (!!input.minify && isImage(list[index].output)) {
+
+                                    buildItem(list[index], program, inputDir, outputDir, function() {
+
+                                        if (index == list.length - 1) {
+
+                                            callback(0);
+
+                                        } else {
+
+                                            step(list, index + 1);
+
+                                        }
+
+                                    });
+
+                                } else {
+
+                                    var contents = fs.readFileSync(list[index].input[0]);
+                                    try {
+
+                                        fs.writeFileSync(list[index].output, contents);
+
+                                        if (index == list.length - 1) {
+
+                                            callback(0);
+
+                                        } else {
+
+                                            step(list, index + 1);
+
+                                        }
+
+                                    } catch (e) { }
+
+                                }
+
+                            })(list, 0);
+
+                        } catch (error) {
 
                             if ((program.watch && program.buildSuccess) || program.ignore) {
 
-                                stdout(getError(errors.FILE_NOT_FOUND, error, program));
+                                stdout(getError(errors.DIRECTORY_ERROR, error, program));
 
                                 callback(1);
 
-                                break;
-
                             } else {
 
-                                stderr(getError(errors.FILE_NOT_FOUND, error, program));
+                                stderr(getError(errors.DIRECTORY_ERROR, error, program));
 
                                 process.exit(1);
 
@@ -354,172 +451,133 @@
 
                     }
 
-                    (function step(list, index) {
+                    break;
 
-                        if (!!input.minify && isImage(list[index].output)) {
+                case itemTypes.EXEC :
 
-                            buildItem(list[index], program, inputDir, outputDir, function() {
+                    var options = {
+                        cwd: inputDir,
+                        env: process.env
+                    };
 
-                                if (index == list.length - 1) {
+                    if (!program.quiet) {
 
-                                    callback(0);
+                        if (!program.watch || (program.watch && !program.buildSuccess)) {
 
-                                } else {
+                            if (!!input.output) {
 
-                                    step(list, index + 1);
+                                stdout(tab(1), colorize("$", "black", "yellow"), path.relative(outputDir, input.output));
 
-                                }
+                            } else {
 
-                            });
+                                stdout(tab(1), colorize("$", "black", "yellow"), input.exec);
 
-                        } else {
-
-                            var contents = fs.readFileSync(list[index].input[0]);
-                            try {
-
-                                fs.writeFileSync(list[index].output, contents);
-
-                                if (index == list.length - 1) {
-
-                                    callback(0);
-
-                                } else {
-
-                                    step(list, index + 1);
-
-                                }
-
-                            } catch (e) { }
-
-                        }
-
-                    })(list, 0);
-
-                } catch (error) {
-
-                    if ((program.watch && program.buildSuccess) || program.ignore) {
-
-                        stdout(getError(errors.DIRECTORY_ERROR, error, program));
-
-                        callback(1);
-
-                    } else {
-
-                        stderr(getError(errors.DIRECTORY_ERROR, error, program));
-
-                        process.exit(1);
-
-                    }
-
-                }
-
-                break;
-
-            case itemTypes.EXEC :
-
-                var options = {
-                    cwd: inputDir,
-                    env: process.env
-                };
-
-                if (!program.quiet) {
-
-                    if (!program.watch || (program.watch && !program.buildSuccess)) {
-
-                        if (!!input.output) {
-
-                            stdout(tab(1), colorize("$", "black", "yellow"), path.relative(outputDir, input.output));
-
-                        } else {
-
-                            stdout(tab(1), colorize("$", "black", "yellow"), input.exec);
+                            }
 
                         }
 
                     }
 
-                }
+                    exec(input.exec, options, function (error, result, issue) {
 
-                exec(input.exec, options, function (error, result, issue) {
+                        if (!!error) {
 
-                    if (!!error) {
+                            var error = getError(errors.BUILD_EXEC_FAILED, issue, program);
 
-                        var error = getError(errors.BUILD_EXEC_FAILED, issue, program);
+                            if ((program.watch && program.buildSuccess) || program.ignore) {
 
-                        if ((program.watch && program.buildSuccess) || program.ignore) {
+                                stdout(error);
 
-                            stdout(error);
+                                if (!!input.output && program.ignore) {
 
-                            if (!!input.output && program.ignore) {
+                                    // Create output folder
+                                    wrench.mkdirSyncRecursive(path.dirname(input.output));
+
+                                    // write file
+                                    write(issue, input.output);
+
+                                }
+
+                                callback(1);
+
+                            } else {
+
+                                stderr(error);
+
+                                process.exit(1);
+
+                            }
+
+                        } else {
+
+                            if (!!input.output) {
 
                                 // Create output folder
                                 wrench.mkdirSyncRecursive(path.dirname(input.output));
 
-                                // write file
-                                write(issue, input.output);
+                                write(result, input.output);
 
                             }
 
-                            callback(1);
-
-                        } else {
-
-                            stderr(error);
-
-                            process.exit(1);
+                            callback(0);
 
                         }
 
-                    } else {
+                    });
 
-                        if (!!input.output) {
+                    break;
 
-                            // Create output folder
-                            wrench.mkdirSyncRecursive(path.dirname(input.output));
+                case itemTypes.BUILD_ORDER :
 
-                            write(result, input.output);
+                    (function act(list, index) {
 
-                        }
+                        for (var i = 0, len = allBuildOrders.length; i < len; i++) {
 
-                        callback(0);
+                            if (allBuildOrders[i].id == list[index]) {
 
-                    }
+                                if (!program.quiet && !input.fromHook) {
 
-                });
+                                    if (!program.watch || (program.watch && !program.buildSuccess)) {
 
-                break;
+                                        stdout("\n", colorize(">", "green", "black"), allBuildOrders[i].id, "\n");
 
-            case itemTypes.BUILD_ORDER :
-
-                (function act(list, index) {
-
-                    for (var i = 0, len = allBuildOrders.length; i < len; i++) {
-
-                        if (allBuildOrders[i].id == list[index]) {
-
-                            if (!program.quiet) {
-
-                                if (!program.watch || (program.watch && !program.buildSuccess)) {
-
-                                    stdout("\n", colorize(">", "green", "black"), allBuildOrders[i].id, "\n");
+                                    }
 
                                 }
 
-                            }
+                                buildOrder(allBuildOrders[i], program, inputDir, outputDir, function (result) {
 
-                            buildOrder(allBuildOrders[i], program, inputDir, outputDir, function (result) {
+                                    if (result !== 0) {
 
-                                if (result !== 0) {
+                                        var error = getError(errors.BUILD_ORDER_FAILED, "An error occurred while processing linked build order \"" + targetBuildOrder.id + "\".", program);
 
-                                    var error = getError(errors.BUILD_ORDER_FAILED, "An error occurred while processing linked build order \"" + targetBuildOrder.id + "\".", program);
+                                        if ((program.watch && program.buildSuccess) || program.ignore) {
 
-                                    if ((program.watch && program.buildSuccess) || program.ignore) {
+                                            stdout(error);
 
-                                        stdout(error);
+                                            if (index == list.length - 1) {
+
+                                                callback(1);
+
+                                            } else {
+
+                                                act(list, index + 1);
+
+                                            }
+
+                                        } else {
+
+                                            stderr(error);
+
+                                            process.exit(1);
+
+                                        }
+
+                                    } else {
 
                                         if (index == list.length - 1) {
 
-                                            callback(1);
+                                            callback(result);
 
                                         } else {
 
@@ -527,37 +585,49 @@
 
                                         }
 
-                                    } else {
-
-                                        stderr(error);
-
-                                        process.exit(1);
-
                                     }
 
-                                } else {
+                                });
 
-                                    if (index == list.length - 1) {
-
-                                        callback(result);
-
-                                    } else {
-
-                                        act(list, index + 1);
-
-                                    }
-
-                                }
-
-                            });
+                            }
 
                         }
 
-                    }
+                    })(input.buildOrder, 0);
 
-                })(input.buildOrder, 0);
+                    break;
 
-                break;
+            }
+
+        }
+
+        if (!!input.hooks) {
+
+            if (!!input.hooks.before) {
+
+                buildItem(input.hooks.before, program, inputDir, outputDir, function () {
+
+                    performAction(input, program, inputDir, outputDir, function () {
+
+                        if (!!input.hooks.after) {
+
+                            performAction(input.hooks.after, program, inputDir, outputDir, callback);
+
+                        } else {
+
+                            callback(0);
+
+                        }
+
+                    });
+
+                })
+
+            }
+
+        } else {
+
+            performAction(input, program, inputDir, outputDir, callback);
 
         }
 
