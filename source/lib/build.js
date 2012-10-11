@@ -549,7 +549,7 @@
 
                                     if (result !== 0) {
 
-                                        var error = getError(errors.BUILD_ORDER_FAILED, "An error occurred while processing linked build order \"" + targetBuildOrder.id + "\".", program);
+                                        var error = getError(errors.BUILD_ORDER_FAILED, "An error occurred while processing linked build order \"" + allBuildOrders[i].id + "\".", program);
 
                                         if ((program.watch && program.buildSuccess) || program.ignore) {
 
