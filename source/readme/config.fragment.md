@@ -216,3 +216,23 @@ Another handy trick Rocket provides is linkage to other Build Orders. Much like 
 "buildOrder": ["get-latest-from-git", "build-all", "deploy-to-server"]
 ```
 
+#### Hooks
+
+Sometimes you find yourself the situation where you would like to perform an addition task before or after a file is compiled. This can be achieved using the `hooks` field. Hooks include `before` and `after` statements which reference other Build Orders.
+
+| Field  | Description                          | Optional |
+| :----- | :----------------------------------- | :------: |
+| before | String or Array of Build Order id's. | true     |
+| after  | String or Array of Build Order id's. | true     |
+
+##### Example
+
+```json
+{
+    "exec": "git commit -m \"New build\"",
+    "hooks": {
+        "before": "build",
+        "after": ["cleanup", "email_the_boss"]
+    }
+}
+```

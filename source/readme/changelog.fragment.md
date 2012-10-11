@@ -1,5 +1,12 @@
 ## Change Log
 
+### 0.2.2
+OCT 11, 2012
+
+* Updated SASS / SCSS compiler to 3.2.1
+* Fixed issue where directories where parsed even if not marked for compression
+* Added hooks
+
 ### 0.2.1
 SEP 28, 2012
 

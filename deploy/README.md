@@ -261,7 +261,26 @@ Another handy trick Rocket provides is linkage to other Build Orders. Much like 
 "buildOrder": ["get-latest-from-git", "build-all", "deploy-to-server"]
 ```
 
+#### Hooks
 
+Sometimes you find yourself the situation where you would like to perform an addition task before or after a file is compiled. This can be achieved using the `hooks` field. Hooks include `before` and `after` statements which reference other Build Orders.
+
+| Field  | Description                          | Optional |
+| :----- | :----------------------------------- | :------: |
+| before | String or Array of Build Order id's. | true     |
+| after  | String or Array of Build Order id's. | true     |
+
+##### Example
+
+```json
+{
+    "exec": "git commit -m \"New build\"",
+    "hooks": {
+        "before": "build",
+        "after": ["cleanup", "email_the_boss"]
+    }
+}
+```
 #### Packaged Compilers
 
 Rocket comes with a collection of commonly used compilers for your convenience. Furthermore, these compilers are automatically selected and employed by the following schema:
@@ -442,6 +461,13 @@ Combine custom compilers with the order of compilation and it is easy to see tha
 Rocket will always be in favour of developers and evolve along side the community. So please get involved, post a suggestion, or send a pull request!
 
 ## Change Log
+
+### 0.2.2
+OCT 11, 2012
+
+* Updated SASS / SCSS compiler to 3.2.1
+* Fixed issue where directories where parsed even if not marked for compression
+* Added hooks
 
 ### 0.2.1
 SEP 28, 2012
