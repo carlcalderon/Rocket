@@ -490,14 +490,14 @@ Options:
 END
 
         opts.on('-F', '--from FORMAT',
-          'The format to convert from. Can be css, scss, sass, less.',
+          'The format to convert from. Can be css, scss, sass.',
           'By default, this is inferred from the input filename.',
           'If there is none, defaults to css.') do |name|
           @options[:from] = name.downcase.to_sym
-          unless [:css, :scss, :sass, :less].include?(@options[:from])
+          raise "sass-convert no longer supports LessCSS." if @options[:from] == :less
+          unless [:css, :scss, :sass].include?(@options[:from])
             raise "Unknown format for sass-convert --from: #{name}"
           end
-          try_less_note if @options[:from] == :less
         end
 
         opts.on('-T', '--to FORMAT',
@@ -523,6 +523,17 @@ END
 
         opts.on('--dasherize', 'Convert underscores to dashes') do
           @options[:for_tree][:dasherize] = true
+        end
+
+        opts.on('--indent NUM',
+          'How many spaces to use for each level of indentation. Defaults to 2.',
+          '"t" means use hard tabs.') do |indent|
+
+          if indent == 't'
+            @options[:for_tree][:indent] = "\t"
+          else
+            @options[:for_tree][:indent] = " " * indent.to_i
+          end
         end
 
         opts.on('--old', 'Output the old-style ":prop val" property syntax.',
@@ -619,7 +630,7 @@ END
             case input.path
             when /\.scss$/; :scss
             when /\.sass$/; :sass
-            when /\.less$/; :less
+            when /\.less$/; raise "sass-convert no longer supports LessCSS."
             when /\.css$/; :css
             end
         elsif @options[:in_place]
@@ -643,11 +654,6 @@ END
             if @options[:from] == :css
               require 'sass/css'
               ::Sass::CSS.new(input.read, @options[:for_tree]).render(@options[:to])
-            elsif @options[:from] == :less
-              require 'sass/less'
-              try_less_note
-              input = input.read if input.is_a?(IO) && !input.is_a?(File) # Less is dumb
-              Less::Engine.new(input).to_tree.to_sass_tree.send("to_#{@options[:to]}", @options[:for_tree])
             else
               if input.is_a?(File)
                 ::Sass::Engine.for_file(input.path, @options[:for_engine])
@@ -665,17 +671,6 @@ END
         raise "Error on line #{e.sass_line}#{file}: #{e.message}\n  Use --trace for backtrace"
       rescue LoadError => err
         handle_load_error(err)
-      end
-
-      @@less_note_printed = false
-      def try_less_note
-        return if @@less_note_printed
-        @@less_note_printed = true
-        warn <<NOTE
-* NOTE: Sass and Less are different languages, and they work differently.
-* I'll do my best to translate, but some features -- especially mixins --
-* should be checked by hand.
-NOTE
       end
     end
   end

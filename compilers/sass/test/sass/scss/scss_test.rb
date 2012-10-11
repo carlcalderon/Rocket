@@ -266,7 +266,7 @@ SCSS
     assert_equal "@import url(foo.css);\n", render('@import "foo.css";')
     assert_equal "@import url(foo.css);\n", render("@import 'foo.css';")
     assert_equal "@import url(\"foo.css\");\n", render('@import url("foo.css");')
-    assert_equal "@import url('foo.css');\n", render("@import url('foo.css');")
+    assert_equal "@import url(\"foo.css\");\n", render('@import url("foo.css");')
     assert_equal "@import url(foo.css);\n", render('@import url(foo.css);')
   end
 
@@ -274,9 +274,29 @@ SCSS
     assert_equal("@import \"./fonts.sass\" all;\n", render("@import \"./fonts.sass\" all;"))
   end
 
+  def test_dynamic_media_import
+    assert_equal(<<CSS, render(<<SCSS))
+@import "foo" print and (-webkit-min-device-pixel-ratio-foo: 25);
+CSS
+$media: print;
+$key: -webkit-min-device-pixel-ratio;
+$value: 20;
+@import "foo" \#{$media} and ($key + "-foo": $value + 5);
+SCSS
+  end
+
   def test_http_import
     assert_equal("@import \"http://fonts.googleapis.com/css?family=Droid+Sans\";\n",
       render("@import \"http://fonts.googleapis.com/css?family=Droid+Sans\";"))
+  end
+
+  def test_import_with_interpolation
+    assert_equal <<CSS, render(<<SCSS)
+@import url("http://fonts.googleapis.com/css?family=Droid+Sans");
+CSS
+$family: unquote("Droid+Sans");
+@import url("http://fonts.googleapis.com/css?family=\#{$family}");
+SCSS
   end
 
   def test_url_import
@@ -494,6 +514,22 @@ CSS
 foo {
   &:hover {a: b}
   bar &.baz {c: d}}
+SCSS
+  end
+
+  def test_parent_selector_with_subject
+    assert_equal <<CSS, render(<<SCSS)
+bar foo.baz! .bip {
+  a: b; }
+
+bar foo bar.baz! .bip {
+  c: d; }
+CSS
+foo {
+  bar &.baz! .bip {a: b}}
+
+foo bar {
+  bar &.baz! .bip {c: d}}
 SCSS
   end
 
@@ -731,6 +767,364 @@ bar {
 SASS
   end
 
+  ## Var Args
+
+  def test_mixin_var_args
+    assert_equal <<CSS, render(<<SCSS)
+.foo {
+  a: 1;
+  b: 2, 3, 4; }
+CSS
+@mixin foo($a, $b...) {
+  a: $a;
+  b: $b;
+}
+
+.foo {@include foo(1, 2, 3, 4)}
+SCSS
+  end
+
+  def test_mixin_empty_var_args
+    assert_equal <<CSS, render(<<SCSS)
+.foo {
+  a: 1;
+  b: 0; }
+CSS
+@mixin foo($a, $b...) {
+  a: $a;
+  b: length($b);
+}
+
+.foo {@include foo(1)}
+SCSS
+  end
+
+  def test_mixin_var_args_act_like_list
+    assert_equal <<CSS, render(<<SCSS)
+.foo {
+  a: 3;
+  b: 3; }
+CSS
+@mixin foo($a, $b...) {
+  a: length($b);
+  b: nth($b, 2);
+}
+
+.foo {@include foo(1, 2, 3, 4)}
+SCSS
+  end
+
+  def test_mixin_splat_args
+    assert_equal <<CSS, render(<<SCSS)
+.foo {
+  a: 1;
+  b: 2;
+  c: 3;
+  d: 4; }
+CSS
+@mixin foo($a, $b, $c, $d) {
+  a: $a;
+  b: $b;
+  c: $c;
+  d: $d;
+}
+
+$list: 2, 3, 4;
+.foo {@include foo(1, $list...)}
+SCSS
+  end
+
+  def test_mixin_splat_expression
+    assert_equal <<CSS, render(<<SCSS)
+.foo {
+  a: 1;
+  b: 2;
+  c: 3;
+  d: 4; }
+CSS
+@mixin foo($a, $b, $c, $d) {
+  a: $a;
+  b: $b;
+  c: $c;
+  d: $d;
+}
+
+.foo {@include foo(1, (2, 3, 4)...)}
+SCSS
+  end
+
+  def test_mixin_splat_args_with_var_args
+    assert_equal <<CSS, render(<<SCSS)
+.foo {
+  a: 1;
+  b: 2, 3, 4; }
+CSS
+@mixin foo($a, $b...) {
+  a: $a;
+  b: $b;
+}
+
+$list: 2, 3, 4;
+.foo {@include foo(1, $list...)}
+SCSS
+  end
+
+  def test_mixin_splat_args_with_var_args_and_normal_args
+    assert_equal <<CSS, render(<<SCSS)
+.foo {
+  a: 1;
+  b: 2;
+  c: 3, 4; }
+CSS
+@mixin foo($a, $b, $c...) {
+  a: $a;
+  b: $b;
+  c: $c;
+}
+
+$list: 2, 3, 4;
+.foo {@include foo(1, $list...)}
+SCSS
+  end
+
+  def test_mixin_splat_args_with_var_args_preserves_separator
+    assert_equal <<CSS, render(<<SCSS)
+.foo {
+  a: 1;
+  b: 2 3 4 5; }
+CSS
+@mixin foo($a, $b...) {
+  a: $a;
+  b: $b;
+}
+
+$list: 3 4 5;
+.foo {@include foo(1, 2, $list...)}
+SCSS
+  end
+
+  def test_mixin_var_and_splat_args_pass_through_keywords
+    assert_equal <<CSS, render(<<SCSS)
+.foo {
+  a: 3;
+  b: 1;
+  c: 2; }
+CSS
+@mixin foo($a...) {
+  @include bar($a...);
+}
+
+@mixin bar($b, $c, $a) {
+  a: $a;
+  b: $b;
+  c: $c;
+}
+
+.foo {@include foo(1, $c: 2, $a: 3)}
+SCSS
+  end
+
+  def test_mixin_var_args_with_keyword
+    assert_raise_message(Sass::SyntaxError, "Positional arguments must come before keyword arguments.") {render <<SCSS}
+@mixin foo($a, $b...) {
+  a: $a;
+  b: $b;
+}
+
+.foo {@include foo($a: 1, 2, 3, 4)}
+SCSS
+  end
+
+  def test_mixin_keyword_for_var_arg
+    assert_raise_message(Sass::SyntaxError, "Argument $b of mixin foo cannot be used as a named argument.") {render <<SCSS}
+@mixin foo($a, $b...) {
+  a: $a;
+  b: $b;
+}
+
+.foo {@include foo(1, $b: 2 3 4)}
+SCSS
+  end
+
+  def test_mixin_keyword_for_unknown_arg_with_var_args
+    assert_raise_message(Sass::SyntaxError, "Mixin foo doesn't have an argument named $c.") {render <<SCSS}
+@mixin foo($a, $b...) {
+  a: $a;
+  b: $b;
+}
+
+.foo {@include foo(1, $c: 2 3 4)}
+SCSS
+  end
+
+  def test_function_var_args
+    assert_equal <<CSS, render(<<SCSS)
+.foo {
+  val: "a: 1, b: 2, 3, 4"; }
+CSS
+@function foo($a, $b...) {
+  @return "a: \#{$a}, b: \#{$b}";
+}
+
+.foo {val: foo(1, 2, 3, 4)}
+SCSS
+  end
+
+  def test_function_empty_var_args
+    assert_equal <<CSS, render(<<SCSS)
+.foo {
+  val: "a: 1, b: 0"; }
+CSS
+@function foo($a, $b...) {
+  @return "a: \#{$a}, b: \#{length($b)}";
+}
+
+.foo {val: foo(1)}
+SCSS
+  end
+
+  def test_function_var_args_act_like_list
+    assert_equal <<CSS, render(<<SCSS)
+.foo {
+  val: "a: 3, b: 3"; }
+CSS
+@function foo($a, $b...) {
+  @return "a: \#{length($b)}, b: \#{nth($b, 2)}";
+}
+
+.foo {val: foo(1, 2, 3, 4)}
+SCSS
+  end
+
+  def test_function_splat_args
+    assert_equal <<CSS, render(<<SCSS)
+.foo {
+  val: "a: 1, b: 2, c: 3, d: 4"; }
+CSS
+@function foo($a, $b, $c, $d) {
+  @return "a: \#{$a}, b: \#{$b}, c: \#{$c}, d: \#{$d}";
+}
+
+$list: 2, 3, 4;
+.foo {val: foo(1, $list...)}
+SCSS
+  end
+
+  def test_function_splat_expression
+    assert_equal <<CSS, render(<<SCSS)
+.foo {
+  val: "a: 1, b: 2, c: 3, d: 4"; }
+CSS
+@function foo($a, $b, $c, $d) {
+  @return "a: \#{$a}, b: \#{$b}, c: \#{$c}, d: \#{$d}";
+}
+
+.foo {val: foo(1, (2, 3, 4)...)}
+SCSS
+  end
+
+  def test_function_splat_args_with_var_args
+    assert_equal <<CSS, render(<<SCSS)
+.foo {
+  val: "a: 1, b: 2, 3, 4"; }
+CSS
+@function foo($a, $b...) {
+  @return "a: \#{$a}, b: \#{$b}";
+}
+
+$list: 2, 3, 4;
+.foo {val: foo(1, $list...)}
+SCSS
+  end
+
+  def test_function_splat_args_with_var_args_and_normal_args
+    assert_equal <<CSS, render(<<SCSS)
+.foo {
+  val: "a: 1, b: 2, c: 3, 4"; }
+CSS
+@function foo($a, $b, $c...) {
+  @return "a: \#{$a}, b: \#{$b}, c: \#{$c}";
+}
+
+$list: 2, 3, 4;
+.foo {val: foo(1, $list...)}
+SCSS
+  end
+
+  def test_function_splat_args_with_var_args_preserves_separator
+    assert_equal <<CSS, render(<<SCSS)
+.foo {
+  val: "a: 1, b: 2 3 4 5"; }
+CSS
+@function foo($a, $b...) {
+  @return "a: \#{$a}, b: \#{$b}";
+}
+
+$list: 3 4 5;
+.foo {val: foo(1, 2, $list...)}
+SCSS
+  end
+
+  def test_function_var_and_splat_args_pass_through_keywords
+    assert_equal <<CSS, render(<<SCSS)
+.foo {
+  val: "a: 3, b: 1, c: 2"; }
+CSS
+@function foo($a...) {
+  @return bar($a...);
+}
+
+@function bar($b, $c, $a) {
+  @return "a: \#{$a}, b: \#{$b}, c: \#{$c}";
+}
+
+.foo {val: foo(1, $c: 2, $a: 3)}
+SCSS
+  end
+
+  def test_function_var_args_with_keyword
+    assert_raise_message(Sass::SyntaxError, "Positional arguments must come before keyword arguments.") {render <<SCSS}
+@function foo($a, $b...) {
+  @return "a: \#{$a}, b: $b";
+}
+
+.foo {val: foo($a: 1, 2, 3, 4)}
+SCSS
+  end
+
+  def test_function_keyword_for_var_arg
+    assert_raise_message(Sass::SyntaxError, "Argument $b of function foo cannot be used as a named argument.") {render <<SCSS}
+@function foo($a, $b...) {
+  @return "a: \#{$a}, b: \#{$b}";
+}
+
+.foo {val: foo(1, $b: 2 3 4)}
+SCSS
+  end
+
+  def test_function_keyword_for_unknown_arg_with_var_args
+    assert_raise_message(Sass::SyntaxError, "Function foo doesn't have an argument named $c.") {render <<SCSS}
+@function foo($a, $b...) {
+  @return "a: \#{$a}, b: \#{$b}";
+}
+
+.foo {val: foo(1, $c: 2 3 4)}
+SCSS
+  end
+
+  def test_function_var_args_passed_to_native
+    assert_equal <<CSS, render(<<SCSS)
+.foo {
+  val: #102035; }
+CSS
+@function foo($args...) {
+  @return adjust-color($args...);
+}
+
+.foo {val: foo(#102030, $blue: 5)}
+SCSS
+  end
+
   ## Interpolation
 
   def test_basic_selector_interpolation
@@ -851,6 +1245,29 @@ div { -foo-\#{$a}-\#{$b}-foo: foo }
 SCSS
   end
 
+  def test_selector_interpolation_in_reference_combinator
+    assert_equal <<CSS, render(<<SCSS)
+.foo /a/ .bar /b|c/ .baz {
+  a: b; }
+CSS
+$a: a;
+$b: b;
+$c: c;
+.foo /\#{$a}/ .bar /\#{$b}|\#{$c}/ .baz {a: b}
+SCSS
+  end
+
+  def test_parent_selector_with_parent_and_subject
+    assert_equal <<CSS, render(<<SCSS)
+bar foo.baz! .bip {
+  c: d; }
+CSS
+$subject: "!";
+foo {
+  bar &.baz\#{$subject} .bip {c: d}}
+SCSS
+  end
+
   def test_basic_prop_name_interpolation
     assert_equal <<CSS, render(<<SCSS)
 foo {
@@ -875,17 +1292,222 @@ foo {\#{"baz" + "bang"}: blip}
 SCSS
   end
 
+  def test_directive_interpolation
+    assert_equal <<CSS, render(<<SCSS)
+@foo bar12 qux {
+  a: b; }
+CSS
+$baz: 12;
+@foo bar\#{$baz} qux {a: b}
+SCSS
+  end
+
+  def test_media_interpolation
+    assert_equal <<CSS, render(<<SCSS)
+@media bar12 {
+  a: b; }
+CSS
+$baz: 12;
+@media bar\#{$baz} {a: b}
+SCSS
+  end
+
+  def test_script_in_media
+    assert_equal <<CSS, render(<<SCSS)
+@media screen and (-webkit-min-device-pixel-ratio: 20), only print {
+  a: b; }
+CSS
+$media1: screen;
+$media2: print;
+$var: -webkit-min-device-pixel-ratio;
+$val: 20;
+@media \#{$media1} and ($var: $val), only \#{$media2} {a: b}
+SCSS
+
+    assert_equal <<CSS, render(<<SCSS)
+@media screen and (-webkit-min-device-pixel-ratio: 13) {
+  a: b; }
+CSS
+$vals: 1 2 3;
+@media screen and (-webkit-min-device-pixel-ratio: 5 + 6 + nth($vals, 2)) {a: b}
+SCSS
+  end
+
+  def test_media_interpolation_with_reparse
+    assert_equal <<CSS, render(<<SCSS)
+@media screen and (max-width: 300px) {
+  a: b; }
+@media screen and (max-width: 300px) {
+  a: b; }
+@media screen and (max-width: 300px) {
+  a: b; }
+@media screen and (max-width: 300px), print and (max-width: 300px) {
+  a: b; }
+CSS
+$constraint: "(max-width: 300px)";
+$fragment: "nd \#{$constraint}";
+$comma: "een, pri";
+@media screen and \#{$constraint} {a: b}
+@media screen {
+  @media \#{$constraint} {a: b}
+}
+@media screen a\#{$fragment} {a: b}
+@media scr\#{$comma}nt {
+  @media \#{$constraint} {a: b}
+}
+SCSS
+  end
+
+  def test_moz_document_interpolation
+    assert_equal <<CSS, render(<<SCSS)
+@-moz-document url(http://sass-lang.com/),
+               url-prefix(http://sass-lang.com/docs),
+               domain(sass-lang.com),
+               domain("sass-lang.com") {
+  .foo {
+    a: b; } }
+CSS
+$domain: "sass-lang.com";
+@-moz-document url(http://\#{$domain}/),
+               url-prefix(http://\#{$domain}/docs),
+               domain(\#{$domain}),
+               \#{domain($domain)} {
+  .foo {a: b}
+}
+SCSS
+  end
+
+  def test_supports_with_expressions
+    assert_equal <<CSS, render(<<SCSS)
+@supports (feature1: val) and (feature2: val) or (not (feature23: val4)) {
+  foo {
+    a: b; } }
+CSS
+$query: "(feature1: val)";
+$feature: feature2;
+$val: val;
+@supports \#{$query} and ($feature: $val) or (not ($feature + 3: $val + 4)) {
+  foo {a: b}
+}
+SCSS
+  end
+
+  def test_supports_bubbling
+    assert_equal <<CSS, render(<<SCSS)
+@supports (foo: bar) {
+  a {
+    b: c; }
+    @supports (baz: bang) {
+      a {
+        d: e; } } }
+CSS
+a {
+  @supports (foo: bar) {
+    b: c;
+    @supports (baz: bang) {
+      d: e;
+    }
+  }
+}
+SCSS
+  end
+
+  def test_random_directive_interpolation
+    assert_equal <<CSS, render(<<SCSS)
+@foo url(http://sass-lang.com/),
+     domain("sass-lang.com"),
+     "foobarbaz",
+     foobarbaz {
+  .foo {
+    a: b; } }
+CSS
+$domain: "sass-lang.com";
+@foo url(http://\#{$domain}/),
+     \#{domain($domain)},
+     "foo\#{'ba' + 'r'}baz",
+     foo\#{'ba' + 'r'}baz {
+  .foo {a: b}
+}
+SCSS
+  end
+
+  def test_nested_mixin_def
+    assert_equal <<CSS, render(<<SCSS)
+foo {
+  a: b; }
+CSS
+foo {
+  @mixin bar {a: b}
+  @include bar; }
+SCSS
+  end
+
+  def test_nested_mixin_shadow
+    assert_equal <<CSS, render(<<SCSS)
+foo {
+  c: d; }
+
+baz {
+  a: b; }
+CSS
+@mixin bar {a: b}
+
+foo {
+  @mixin bar {c: d}
+  @include bar;
+}
+
+baz {@include bar}
+SCSS
+  end
+
+  def test_nested_function_def
+    assert_equal <<CSS, render(<<SCSS)
+foo {
+  a: 1; }
+
+bar {
+  b: foo(); }
+CSS
+foo {
+  @function foo() {@return 1}
+  a: foo(); }
+
+bar {b: foo()}
+SCSS
+  end
+
+  def test_nested_function_shadow
+    assert_equal <<CSS, render(<<SCSS)
+foo {
+  a: 2; }
+
+baz {
+  b: 1; }
+CSS
+@function foo() {@return 1}
+
+foo {
+  @function foo() {@return 2}
+  a: foo();
+}
+
+baz {b: foo()}
+SCSS
+  end
+
   ## Errors
 
-  def test_mixin_defs_only_at_toplevel
+  def test_nested_mixin_def_is_scoped
     render <<SCSS
 foo {
   @mixin bar {a: b}}
+bar {@include bar}
 SCSS
     assert(false, "Expected syntax error")
   rescue Sass::SyntaxError => e
-    assert_equal "Mixins may only be defined at the root of a document.", e.message
-    assert_equal 2, e.sass_line
+    assert_equal "Undefined mixin 'bar'.", e.message
+    assert_equal 3, e.sass_line
   end
 
   def test_rules_beneath_properties
@@ -902,8 +1524,7 @@ SCSS
   end
 
   def test_uses_property_exception_with_star_hack
-    # Silence the "beginning of selector" warning
-    Sass::Util.silence_warnings {render <<SCSS}
+    render <<SCSS
 foo {
   *bar:baz [fail]; }
 SCSS
@@ -1041,9 +1662,9 @@ SCSS
 
   def test_parent_in_mid_selector_error
     assert_raise_message(Sass::SyntaxError, <<MESSAGE.rstrip) {render <<SCSS}
-Invalid CSS after ".foo": expected "{", was "&.bar"
+Invalid CSS after "  .foo": expected "{", was "&.bar {a: b}"
 
-"&" may only be used at the beginning of a selector.
+"&.bar" may only be used at the beginning of a selector.
 MESSAGE
 flim {
   .foo&.bar {a: b}
@@ -1051,7 +1672,7 @@ flim {
 SCSS
   end
 
-  def test_parent_in_mid_selector_error
+  def test_parent_after_selector_error
     assert_raise_message(Sass::SyntaxError, <<MESSAGE.rstrip) {render <<SCSS}
 Invalid CSS after "  .foo.bar": expected "{", was "& {a: b}"
 
@@ -1075,26 +1696,6 @@ flim {
 SCSS
   end
 
-  def test_no_interpolation_in_media_queries
-    assert_raise_message(Sass::SyntaxError, <<MESSAGE.rstrip) {render <<SCSS}
-Invalid CSS after "...nd (min-width: ": expected expression (e.g. 1px, bold), was "\#{100}px) {"
-MESSAGE
-@media screen and (min-width: \#{100}px) {
-  foo {bar: baz}
-}
-SCSS
-  end
-
-  def test_no_interpolation_in_unrecognized_directives
-    assert_raise_message(Sass::SyntaxError, <<MESSAGE.rstrip) {render <<SCSS}
-Invalid CSS after "@foo ": expected selector or at-rule, was "\#{100} {"
-MESSAGE
-@foo \#{100} {
-  foo {bar: baz}
-}
-SCSS
-  end
-
   def test_no_lonely_else
     assert_raise_message(Sass::SyntaxError, <<MESSAGE.rstrip) {render <<SCSS}
 Invalid CSS: @else must come after @if
@@ -1104,6 +1705,36 @@ SCSS
   end
 
   # Regression
+
+  def test_reference_combinator_with_parent_ref
+    assert_equal <<CSS, render(<<SCSS)
+a /foo/ b {
+  c: d; }
+CSS
+a {& /foo/ b {c: d}}
+SCSS
+  end
+
+  def test_newline_selector_rendered_multiple_times
+    assert_equal <<CSS, render(<<SCSS)
+form input,
+form select {
+  color: white; }
+
+form input,
+form select {
+  color: white; }
+CSS
+@for $i from 1 through 2 {
+  form {
+    input,
+    select {
+      color: white;
+    }
+  }
+}
+SCSS
+  end
 
   def test_prop_name_interpolation_after_hyphen
     assert_equal <<CSS, render(<<SCSS)
@@ -1226,7 +1857,7 @@ SCSS
   end
 
   def test_unknown_keyword_arg_raises_error
-    assert_raise_message(Sass::SyntaxError, "Mixin a doesn't have an argument named $c") {render <<SCSS}
+    assert_raise_message(Sass::SyntaxError, "Mixin a doesn't have an argument named $c.") {render <<SCSS}
 @mixin a($b: 1) { a: $b; }
 div { @include a(1, $c: 3); }
 SCSS
@@ -1270,6 +1901,42 @@ foo {
   a: $var1;
   b: $var2;
   c: $var3; }
+SCSS
+  end
+
+  def test_mixin_content
+    assert_equal <<CSS, render(<<SASS)
+.parent {
+  background-color: red;
+  border-color: red; }
+  .parent .child {
+    background-color: yellow;
+    color: blue;
+    border-color: yellow; }
+CSS
+$color: blue;
+@mixin context($class, $color: red) {
+  .\#{$class} {
+    background-color: $color;
+    @content;
+    border-color: $color;
+  }
+}
+@include context(parent) {
+  @include context(child, $color: yellow) {
+    color: $color;
+  }
+}
+SASS
+  end
+
+  def test_empty_content
+    assert_equal <<CSS, render(<<SCSS)
+a {
+  b: c; }
+CSS
+@mixin foo { @content }
+a { b: c; @include foo {} }
 SCSS
   end
 
