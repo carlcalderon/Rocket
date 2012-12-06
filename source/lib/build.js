@@ -623,6 +623,18 @@
 
                 })
 
+            } else if (!!input.hooks.after) {
+
+                performAction(input, program, inputDir, outputDir, function () {
+
+                    buildItem(input.hooks.after, program, inputDir, outputDir, callback);
+
+                });
+
+            } else {
+
+                callback(0);
+
             }
 
         } else {
