@@ -345,9 +345,9 @@
 
         } else {
 
-            result.warnings.push({
-                id: warnings.MISSING_BUILD_ORDER_ITEMS,
-                reason: "Build order \"" + id + "\" field \"items\" is missing."
+            result.errors.push({
+                id: errors.MISSING_BUILD_ORDER_ITEMS,
+                reason: "Build order \"" + id + "\" is missing required field \"items\"."
             });
 
             return result;
