@@ -11,6 +11,8 @@
         compilers = require("./compilers"),
 
         stdout      = global.stdout,
+        stderr      = global.stderr,
+        stdwarn     = global.stdwarn,
 
         allCompilers = null;
 
