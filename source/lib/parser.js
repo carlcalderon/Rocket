@@ -106,9 +106,9 @@
         // Extract basic information (support for < 0.1.14)
         // If none of the paths are defined, run from configuration
         // file path but send warning if input and output are the same.
-        baseDir   = data.baseDir   || data.base_dir    || ".";
-        inputDir  = data.inputDir  || data.input_dir   || baseDir;
-        outputDir = data.outputDir || data.output_dir  || baseDir;
+        baseDir   = data.baseDir   || data.base_dir    || data.base   || ".";
+        inputDir  = data.inputDir  || data.input_dir   || data.input  || baseDir;
+        outputDir = data.outputDir || data.output_dir  || data.output || baseDir;
 
         if (inputDir == outputDir) {
             result.warnings.push({
@@ -244,9 +244,9 @@
 
                 targetBuildOrder = program.build;
 
-            } else if (typeof data.defaultBuildOrder == "string") {
+            } else if (typeof (data.defaultBuildOrder || data.default) == "string") {
 
-                targetBuildOrder = data.defaultBuildOrder;
+                targetBuildOrder = (data.defaultBuildOrder || data.default);
 
             }
 
