@@ -190,7 +190,7 @@ if (program.version) {
         if (!program.schematic) {
 
             // Ask for user permission to continue
-            program.confirm("Do you want to continue? (yes, no): ", function (approve) {
+            global.confirm("Do you want to continue? (Y/n): ", function (approve) {
 
                 if (approve == true) {
 
@@ -221,7 +221,7 @@ if (program.version) {
 
                 }
 
-            });
+            }, true);
         }
 
     }

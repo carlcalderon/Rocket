@@ -3,9 +3,10 @@
 // =============================================================================
 (function(output){
 
-    var fs   = require("fs"),
-        util = require("util"),
-        path = require("path"),
+    var fs        = require("fs"),
+        util      = require("util"),
+        path      = require("path"),
+        program   = require("commander"),
 
     verbose = true;
 
@@ -121,6 +122,24 @@
 
     }
 
+    function confirm(str, callback, defaultsTo){
+
+        program.prompt(str, function(decision){
+
+            if (decision.length == 0) {
+
+                callback(Boolean(defaultsTo));
+
+            } else {
+
+                callback(decision.toLowerCase().substr(0,1) == "y");
+
+            }
+
+        });
+
+    };
+
     output.ENCODING = "utf8";
 
     output.tab           = tab;
@@ -130,6 +149,7 @@
     output.stdwarn       = stdwarn;
     output.inspect       = inspect;
     output.flatten       = flatten;
+    output.confirm       = confirm;
     output.splitLines    = splitLines;
     output.isRaw         = isRaw;
     output.isImage       = isImage;
