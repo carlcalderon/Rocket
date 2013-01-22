@@ -4,7 +4,7 @@ Unless running in watch mode, all builds are made in order of input. This provid
 
 The following example shows how the **output** of one build item can be used as the **input** of the next.
 
-```json
+```javascript
 {
     "input_dir": "source",
     "output_dir": "deploy",

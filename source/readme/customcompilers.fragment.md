@@ -4,7 +4,7 @@ An **awesome** feature of Rocket is custom compiler configuration.
 
 If you have some CoffeeScript that needs to be compiled with the bare flag (-b), you can specify a custom compiler like so:
 
-```json
+```javascript
 {
     "inputDir": "source",
     "outputDir": "deploy",
@@ -31,11 +31,11 @@ If you have some CoffeeScript that needs to be compiled with the bare flag (-b),
 
 The above example declares a custom compiler with an ID of `coffeescript-bare` and specifies the executable and bespoke arguments. The custom `coffeescript-bare` compiler is then referenced in a build object to be used to compile **scripts.coffee** into **scripts.js**.
 
-The custom compiler can contain any number of custom fields which are shared between the arguments string and the build object it self (**NOTE:** `{input}` and `{output}` are reserved). This allows for shared compiler setups but file-to-file specific arguments. 
+The custom compiler can contain any number of custom fields which are shared between the arguments string and the build object it self (**NOTE:** `{input}` and `{output}` are reserved). This allows for shared compiler setups but file-to-file specific arguments.
 
 The following example shows how a single custom compiler can produce different results by using a custom `message` field:
 
-```json
+```javascript
 {
     "inputDir": "source",
     "outputDir": "deploy",
