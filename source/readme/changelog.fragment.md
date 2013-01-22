@@ -1,5 +1,13 @@
 ## Change Log
 
+### 0.2.3
+TBD
+
+* Schematic approval now defaults to `true`
+* `inputDir` and `outputDir` may now be just `input` and `output`
+* `defaultBuildOrder` may now be just `default`
+* 
+
 ### 0.2.2
 OCT 11, 2012
 
