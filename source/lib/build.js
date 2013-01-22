@@ -36,11 +36,33 @@
 
         program.buildSuccess = false;
         allBuildOrders       = input.buildOrders;
-        errorCount           = 0;
-        warningCount         = 0;
+        errorCount           = (function (source) {
+            var count = source.errors.length;
+            source.buildOrders.forEach(function (buildOrder) {
+                count += buildOrder.errors.length;
+                buildOrder.items.forEach(function (buildItem) {
+                    count += buildItem.errors.length;
+                });
+            });
+            return count;
+        }(input));
+        warningCount         = (function (source) {
+            var count = source.warnings.length;
+            source.buildOrders.forEach(function (buildOrder) {
+                count += buildOrder.warnings.length;
+                buildOrder.items.forEach(function (buildItem) {
+                    count += buildItem.warnings.length;
+                });
+            });
+            return count;
+        }(input));
 
         // Announce
-        stdout(bold("Compile") + (program.quiet ? "" : "\n"));
+        if (!program.quiet) {
+
+            stdout(bold("Compile\n"));
+
+        }
 
         // Find build order matching selection
         for (var i = 0, len = input.buildOrders.length; i < len; i++) {
@@ -57,7 +79,7 @@
 
                     }
 
-                    stdout("\n" + bold("Complete"), "(errors: " + errorCount + ", warnings: " + warningCount + ")");
+                    stdout((program.quiet ? "" : "\n") + bold("Complete"), "(errors: " + errorCount + ", warnings: " + warningCount + ")");
 
                     callback(result);
 
