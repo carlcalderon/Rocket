@@ -197,11 +197,15 @@
 
                                 try {
 
-                                    fs.unlinkSync(filepath);
+                                    if (fs.existsSync(filepath)) {
+
+                                        fs.unlinkSync(filepath);
+
+                                    }
 
                                 } catch (e) {
 
-                                    // ignore, file already removed
+                                    // ignore
 
                                 }
 
@@ -224,7 +228,11 @@
 
                                 try {
 
-                                    fs.unlinkSync(filepath);
+                                    if (fs.existsSync(filepath)) {
+
+                                        fs.unlinkSync(filepath);
+
+                                    }
 
                                 } catch (e) {
 
