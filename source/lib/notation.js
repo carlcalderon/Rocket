@@ -21,11 +21,11 @@
 
     FILE_SEPARATOR  = "\r\n",
 
-    REGEXP_NOTATION = function() { return /<\!--\s?(rocket|sb):\s?([\S]+)\s?([\s\S]*?)\s?-->([\s\S]*?)<\!--\s?end\s?-->/gm; },
+    REGEXP_NOTATION = function() { return /<\!--\s?(rocket|sb)(@([\S]+))?:\s?([\S]+)\s?([\s\S]*?)\s?-->([\s\S]*?)<\!--\s?end\s?-->/gm; },
     REGEXP_SCRIPT   = function() { return /script.+src="(.+)"/g; },
     REGEXP_LINK     = function() { return /link.+href="(.+)"/g; },
     REGEXP_TRIM     = function() { return /(\S+)/g; },
-    REGEXP_MATCH    = function() { return /^\.m?[xsd]?(((gm|htm|m)l?)|(svg|ant))$/i; };
+    REGEXP_MATCH    = function() { return /^\.(php)|(m?[xsd]?(((gm|htm|m)l?)|(svg|ant)))$/i; };
 
     function match(filepath) {
 
@@ -39,6 +39,7 @@
             all         = null,
             type        = null,
             action      = null,
+            build       = null,
             target      = null,
             block       = null,
             markup      = null,
@@ -72,9 +73,10 @@
                 while ((match = REGEXP_NOTATION().exec(result.markup)) !== null && count++ < limit) {
                     all     = match[0];
                     type    = match[1];
-                    action  = match[2].toLowerCase();
-                    target  = match[3];
-                    block   = match[4];
+                    build   = match[3];
+                    action  = match[4].toLowerCase();
+                    target  = match[5];
+                    block   = match[6];
                     minify  = false;
                     compile = false;
                     found   = true;
@@ -190,6 +192,7 @@
 
                 }
 
+                result.build   = build;
                 result.minify  = minify;
                 result.compile = compile;
                 result.files   = sources;

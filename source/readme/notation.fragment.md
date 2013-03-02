@@ -5,7 +5,7 @@ Rocket (as well as Springboard) provides basic html comment notations to specify
 ### Syntax
 
 ```html
-<!-- <rocket|sb>: <action> <target|notes> -->
+<!-- <rocket|sb><@build>: <action> <target|notes> -->
 <content>
 <!-- end -->
 ```
@@ -13,12 +13,16 @@ Rocket (as well as Springboard) provides basic html comment notations to specify
 ### Examples
 
 ```html
-<!-- rocket: replace js/scripts.js -->
+<!-- rocket: compile js/scripts.js -->
 <script type="text/coffeescript" src="coffee/scripts.coffee"></script>
 <!-- end -->
 
 <!-- rocket: minify css/styles.css -->
 <link rel="stylesheet" type="text/css" href="less/styles.less">
+<!-- end -->
+
+<!-- rocket@myBuild: compile js/scripts.js -->
+<script type="text/coffeescript" src="coffee/onlyOnMyBuildOrder.coffee"></script>
 <!-- end -->
 
 <!-- rocket: remove Debug mode -->
@@ -41,7 +45,7 @@ footer.html
 | Action  | Description                                      |
 | :------ | :----------------------------------------------- |
 | remove  | Removes the content within the block.            |
-| replace | Replaces/compiles either scripts or links (css). |
+| compile | Replaces/compiles either scripts or links (css). |
 | concat  | Combines the listed files.                       |
 | minify  | As *replace* but also minifies.                  |
 | insert  | Reads each separated row as a file to include.   |

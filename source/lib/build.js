@@ -27,15 +27,17 @@
 
         FILE_SEPARATOR  = "\r\n",
 
-        allBuildOrders = null,
-        errorCount     = 0,
-        warningCount   = 0;
+        allBuildOrders   = null,
+        targetBuildOrder = null,
+        errorCount       = 0,
+        warningCount     = 0;
 
 
     function build(input, program, callback) {
 
         program.buildSuccess = false;
         allBuildOrders       = input.buildOrders;
+        targetBuildOrder     = input.defaultBuildOrder;
         errorCount           = (function (source) {
             var count = source.errors.length;
             source.buildOrders.forEach(function (buildOrder) {
@@ -67,7 +69,7 @@
         // Find build order matching selection
         for (var i = 0, len = input.buildOrders.length; i < len; i++) {
 
-            if (input.buildOrders[i].id == input.defaultBuildOrder) {
+            if (input.buildOrders[i].id == targetBuildOrder) {
 
                 wrench.mkdirSyncRecursive(input.outputDir);
 
@@ -162,8 +164,20 @@
 
                                 if (input.notation[i] != null) {
 
-                                    // notation contents
-                                    content.push(input.notation[i].markup);
+                                    if (!input.notation[i].build || input.notation[i].build == targetBuildOrder) {
+
+                                        // notation contents
+                                        content.push(input.notation[i].markup);
+
+                                    } else if (isRaw(input.output)) {
+
+                                        content.push(fs.readFileSync(flat[i]));
+
+                                    } else {
+
+                                        content.push(fs.readFileSync(flat[i], "utf8"));
+
+                                    }
 
                                 } else if (isRaw(input.output)) {
 
