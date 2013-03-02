@@ -6,7 +6,8 @@ TBD
 * Schematic approval now defaults to `true`
 * `inputDir` and `outputDir` may now be just `input` and `output`
 * `defaultBuildOrder` may now be just `default`
-* 
+* Build Order specific notation using @<buildorder>
+* Notation action "replace" is now "compile"
 
 ### 0.2.2
 OCT 11, 2012
