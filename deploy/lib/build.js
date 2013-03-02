@@ -164,20 +164,8 @@
 
                                 if (input.notation[i] != null) {
 
-                                    if (!input.notation[i].build || input.notation[i].build == targetBuildOrder) {
-
-                                        // notation contents
-                                        content.push(input.notation[i].markup);
-
-                                    } else if (isRaw(input.output)) {
-
-                                        content.push(fs.readFileSync(flat[i]));
-
-                                    } else {
-
-                                        content.push(fs.readFileSync(flat[i], "utf8"));
-
-                                    }
+                                    // notation contents
+                                    content.push(input.notation[i].markup);
 
                                 } else if (isRaw(input.output)) {
 

@@ -33,7 +33,7 @@
 
     }
 
-    function parse(input, filepath, limit) {
+    function parse(input, filepath, limit, targetBuildOrder) {
 
         var match       = null,
             all         = null,
@@ -81,113 +81,121 @@
                     compile = false;
                     found   = true;
                     markup  = "";
-                    switch (action) {
 
-                        case ACTION_TYPE.remove :
+                    if (build == null || build == targetBuildOrder) {
 
-                            markup = "";
 
-                            break;
+                        switch (action) {
 
-                        case ACTION_TYPE.insert :
+                            case ACTION_TYPE.remove :
 
-                            // Split each line between start and end notation blocks
-                            var rows = global.splitLines(block),
-                                row  = null,
-                                len  = rows.length,
-                                i    = 0;
+                                markup = "";
 
-                            // Insert file contents of each line (file)
-                            for ( ; i < len; i++) {
+                                break;
 
-                                // Extract one row and clean it
-                                row = lawnmower.trim(rows[i]);
+                            case ACTION_TYPE.insert :
 
-                                // Ignore empty rows
-                                if (row != null && row != "") {
+                                // Split each line between start and end notation blocks
+                                var rows = global.splitLines(block),
+                                    row  = null,
+                                    len  = rows.length,
+                                    i    = 0;
 
-                                    // find the file
-                                    row = path.resolve(path.dirname(filepath), row);
+                                // Insert file contents of each line (file)
+                                for ( ; i < len; i++) {
 
-                                    if (fs.existsSync(row) == true) {
+                                    // Extract one row and clean it
+                                    row = lawnmower.trim(rows[i]);
 
-                                        sources = sources || [];
+                                    // Ignore empty rows
+                                    if (row != null && row != "") {
 
-                                        try {
+                                        // find the file
+                                        row = path.resolve(path.dirname(filepath), row);
 
-                                            sources.push(row);
-                                            filecontent = fs.readFileSync(row, "utf8");
+                                        if (fs.existsSync(row) == true) {
 
-                                        } catch (error) {
+                                            sources = sources || [];
 
-                                            // error and return
+                                            try {
+
+                                                sources.push(row);
+                                                filecontent = fs.readFileSync(row, "utf8");
+
+                                            } catch (error) {
+
+                                                // error and return
+
+                                            }
+
+                                            markup += filecontent + FILE_SEPARATOR;
 
                                         }
-
-                                        markup += filecontent + FILE_SEPARATOR;
 
                                     }
 
                                 }
 
-                            }
+                                break;
 
-                            break;
+                            case ACTION_TYPE.minify :
 
-                        case ACTION_TYPE.minify :
+                                minify = true;
 
-                            minify = true;
+                            case ACTION_TYPE.compile :
 
-                        case ACTION_TYPE.compile :
+                                compile = true;
 
-                            compile = true;
+                            case ACTION_TYPE.concat :
 
-                        case ACTION_TYPE.concat :
+                                scripts = block.match(REGEXP_SCRIPT());
+                                links   = block.match(REGEXP_LINK());
+                                sources = [];
 
-                            scripts = block.match(REGEXP_SCRIPT());
-                            links   = block.match(REGEXP_LINK());
-                            sources = [];
+                                var len = 0,
+                                    i   = 0,
+                                    base = path.dirname(filepath);
 
-                            var len = 0,
-                                i   = 0,
-                                base = path.dirname(filepath);
+                                if (scripts != null) {
 
-                            if (scripts != null) {
+                                    for (i = 0, len = scripts.length; i < len; i++) {
 
-                                for (i = 0, len = scripts.length; i < len; i++) {
+                                        sources.push(path.resolve(base, REGEXP_SCRIPT().exec(scripts[i])[1]));
 
-                                    sources.push(path.resolve(base, REGEXP_SCRIPT().exec(scripts[i])[1]));
+                                    };
 
-                                };
+                                    markup = "<script type=\"text/javascript\" src=\"" + target + "\"></script>";
 
-                                markup = "<script type=\"text/javascript\" src=\"" + target + "\"></script>";
+                                }
+                                if (links != null) {
 
-                            }
-                            if (links != null) {
+                                    for (i = 0, len = links.length; i < len; i++) {
 
-                                for (i = 0, len = links.length; i < len; i++) {
+                                        sources.push(path.resolve(base, REGEXP_LINK().exec(links[i])[1]));
 
-                                    sources.push(path.resolve(base, REGEXP_LINK().exec(links[i])[1]));
+                                    };
 
-                                };
+                                    markup = "<link rel=\"stylesheet\" type=\"text/css\" href=\"" + target + "\">";
 
-                                markup = "<link rel=\"stylesheet\" type=\"text/css\" href=\"" + target + "\">";
+                                }
 
-                            }
+                                break;
 
-                            break;
+                            default:
 
-                        default:
+                                result.warnings.push({
+                                    id: warnings.INVALID_NOTATION,
+                                    reason: "Notation action \"" + action + "\" is invalid."
+                                });
 
-                            result.warnings.push({
-                                id: warnings.INVALID_NOTATION,
-                                reason: "Notation action \"" + action + "\" is invalid."
-                            });
+                                break;
+                        }
 
-                            break;
+
+                    } else {
+                        markup = block;
                     }
 
-                    //console.log(all, markup);
                     result.markup  = result.markup.replace(all, markup);
 
                 }
