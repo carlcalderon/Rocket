@@ -52,7 +52,7 @@ Rocket's only requirement is a single JSON configuration file. It really is that
 
 ### Basic Example
 
-```json
+```javascript
 {
     "input_dir": "source",
     "output_dir": "deploy",
@@ -123,7 +123,7 @@ and the `items` field may contain Build Objects (See Build Objects). Build Order
 **Tip:** You may select a specific Build Order to execute by setting the `-b` or `--build` flag (i.e. `$ rocket --build "push-to-git" rocket-config.json`).
 
 ##### Example
-```json
+```javascript
 {
     "input_dir": "source",
     "output_dir": "deploy",
@@ -180,7 +180,7 @@ Files & folders may hold the following fields:
 
 The following Build Object specifies 3 folders containing pictures of pets as input directories and concatenate them to a single `my-pets` folder.
 
-```json
+```javascript
 {
 	"input": [
 		"my-dog",
@@ -195,7 +195,7 @@ The following Build Object specifies 3 folders containing pictures of pets as in
 
 The following Build Object concatenates, compiles and minifies two coffee scripts into a single `scripts.js` file.
 
-```json
+```javascript
 {
 	"input": [
 		"coffee/bootstrap.coffee",
@@ -210,7 +210,7 @@ The following Build Object concatenates, compiles and minifies two coffee script
 
 Each line below are valid Build Objects and are parsed and compiled if needed too.
 
-```json
+```javascript
 [...]
 "scripts/bootstrap.coffee", // will result in scripts/bootstrap.js
 "images", // will be copied recursively
@@ -232,7 +232,7 @@ Build Objects may also execute command line tasks such as `git` or `curl`. The o
 
 ##### Examples
 
-```json
+```javascript
 // Get a fresh copy of jQuery
 {
 	"exec": "curl http://code.jquery.com/jquery-1.8.2.min.js",
@@ -256,12 +256,16 @@ Another handy trick Rocket provides is linkage to other Build Orders. Much like 
 
 ##### Examples
 
-```json
+```javascript
 // Single
-"buildOrder": "get-latest-from-git",
+{
+    "buildOrder": "get-latest-from-git"
+}
 
 // Multiple
-"buildOrder": ["get-latest-from-git", "build-all", "deploy-to-server"]
+{
+    "buildOrder": ["get-latest-from-git", "build-all", "deploy-to-server"]
+}
 ```
 
 #### Hooks
@@ -275,7 +279,7 @@ Sometimes you find yourself the situation where you would like to perform an add
 
 ##### Example
 
-```json
+```javascript
 {
     "exec": "git commit -m \"New build\"",
     "hooks": {
@@ -307,7 +311,7 @@ An **awesome** feature of Rocket is custom compiler configuration.
 
 If you have some CoffeeScript that needs to be compiled with the bare flag (-b), you can specify a custom compiler like so:
 
-```json
+```javascript
 {
     "inputDir": "source",
     "outputDir": "deploy",
@@ -334,11 +338,11 @@ If you have some CoffeeScript that needs to be compiled with the bare flag (-b),
 
 The above example declares a custom compiler with an ID of `coffeescript-bare` and specifies the executable and bespoke arguments. The custom `coffeescript-bare` compiler is then referenced in a build object to be used to compile **scripts.coffee** into **scripts.js**.
 
-The custom compiler can contain any number of custom fields which are shared between the arguments string and the build object it self (**NOTE:** `{input}` and `{output}` are reserved). This allows for shared compiler setups but file-to-file specific arguments. 
+The custom compiler can contain any number of custom fields which are shared between the arguments string and the build object it self (**NOTE:** `{input}` and `{output}` are reserved). This allows for shared compiler setups but file-to-file specific arguments.
 
 The following example shows how a single custom compiler can produce different results by using a custom `message` field:
 
-```json
+```javascript
 {
     "inputDir": "source",
     "outputDir": "deploy",
@@ -388,7 +392,7 @@ Rocket (as well as Springboard) provides basic html comment notations to specify
 ### Syntax
 
 ```html
-<!-- <rocket|sb>: <action> <target|notes> -->
+<!-- <rocket|sb><@build>: <action> <target|notes> -->
 <content>
 <!-- end -->
 ```
@@ -396,12 +400,16 @@ Rocket (as well as Springboard) provides basic html comment notations to specify
 ### Examples
 
 ```html
-<!-- rocket: replace js/scripts.js -->
+<!-- rocket: compile js/scripts.js -->
 <script type="text/coffeescript" src="coffee/scripts.coffee"></script>
 <!-- end -->
 
 <!-- rocket: minify css/styles.css -->
 <link rel="stylesheet" type="text/css" href="less/styles.less">
+<!-- end -->
+
+<!-- rocket@myBuild: compile js/scripts.js -->
+<script type="text/coffeescript" src="coffee/onlyOnMyBuildOrder.coffee"></script>
 <!-- end -->
 
 <!-- rocket: remove Debug mode -->
@@ -424,7 +432,7 @@ footer.html
 | Action  | Description                                      |
 | :------ | :----------------------------------------------- |
 | remove  | Removes the content within the block.            |
-| replace | Replaces/compiles either scripts or links (css). |
+| compile | Replaces/compiles either scripts or links (css). |
 | concat  | Combines the listed files.                       |
 | minify  | As *replace* but also minifies.                  |
 | insert  | Reads each separated row as a file to include.   |
@@ -435,7 +443,7 @@ Unless running in watch mode, all builds are made in order of input. This provid
 
 The following example shows how the **output** of one build item can be used as the **input** of the next.
 
-```json
+```javascript
 {
     "input_dir": "source",
     "output_dir": "deploy",
@@ -468,6 +476,15 @@ Combine custom compilers with the order of compilation and it is easy to see tha
 Rocket will always be in favour of developers and evolve along side the community. So please get involved, post a suggestion, or send a pull request!
 
 ## Change Log
+
+### 0.2.3
+TBD
+
+* Schematic approval now defaults to `true`
+* `inputDir` and `outputDir` may now be just `input` and `output`
+* `defaultBuildOrder` may now be just `default`
+* Build Order specific notation using @<buildorder>
+* Notation action "replace" is now "compile"
 
 ### 0.2.2
 OCT 11, 2012
