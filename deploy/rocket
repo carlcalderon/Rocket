@@ -39,7 +39,7 @@ var parse     = require("./lib/parser").parse,
     MAJOR   = 0,
     MINOR   = 2,
     PATCH   = 3,
-    BUILD   = '+0.0.1',
+    BUILD   = '+0.0.2',
     VERSION = [MAJOR, MINOR, PATCH].join(".") + BUILD,
 
     stdout             = global.stdout,
