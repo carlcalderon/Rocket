@@ -477,14 +477,18 @@ Rocket will always be in favour of developers and evolve along side the communit
 
 ## Change Log
 
-### 0.2.3
-TBD
+### 0.2.3+0.0.2
+JUN 15, 2013
 
 * Schematic approval now defaults to `true`
 * `inputDir` and `outputDir` may now be just `input` and `output`
 * `defaultBuildOrder` may now be just `default`
 * Build Order specific notation using @<buildorder>
 * Notation action "replace" is now "compile"
+* Updated SASS / SCSS compiler to 3.2.9
+* Updated LESS compiler to 1.4.0
+* Updated CoffeeScript compiler to 1.6.3
+* Fixed issue where custom compilers where ignored
 
 ### 0.2.2
 OCT 11, 2012
