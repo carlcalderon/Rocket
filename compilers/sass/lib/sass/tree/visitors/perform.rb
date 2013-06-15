@@ -14,11 +14,13 @@ class Sass::Tree::Visitors::Perform < Sass::Tree::Visitors::Base
 
     begin
       unless keywords.empty?
-        unknown_args = keywords.keys - callable.args.map {|var| var.first.underscored_name}
+        unknown_args = Sass::Util.array_minus(keywords.keys,
+          callable.args.map {|var| var.first.underscored_name})
         if callable.splat && unknown_args.include?(callable.splat.underscored_name)
           raise Sass::SyntaxError.new("Argument $#{callable.splat.name} of #{downcase_desc} cannot be used as a named argument.")
         elsif unknown_args.any?
-          raise Sass::SyntaxError.new("#{desc} doesn't have #{unknown_args.length > 1 ? 'the following arguments:' : 'an argument named'} #{unknown_args.map{|name| "$#{name}"}.join ', '}.")
+          description = unknown_args.length > 1 ? 'the following arguments:' : 'an argument named'
+          raise Sass::SyntaxError.new("#{desc} doesn't have #{description} #{unknown_args.map {|name| "$#{name}"}.join ', '}.")
         end
       end
     rescue Sass::SyntaxError => keyword_exception
@@ -142,9 +144,9 @@ class Sass::Tree::Visitors::Perform < Sass::Tree::Visitors::Base
     res = node.expr.perform(@environment)
     res = res.value if res.is_a?(Sass::Script::String)
     if node.filename
-      $stderr.puts "#{node.filename}:#{node.line} DEBUG: #{res}"
+      Sass::Util.sass_warn "#{node.filename}:#{node.line} DEBUG: #{res}"
     else
-      $stderr.puts "Line #{node.line} DEBUG: #{res}"
+      Sass::Util.sass_warn "Line #{node.line} DEBUG: #{res}"
     end
     []
   end
@@ -218,15 +220,17 @@ class Sass::Tree::Visitors::Perform < Sass::Tree::Visitors::Base
     file = node.imported_file
     handle_import_loop!(node) if @stack.any? {|e| e[:filename] == file.options[:filename]}
 
-    @stack.push(:filename => node.filename, :line => node.line)
-    root = file.to_tree
-    Sass::Tree::Visitors::CheckNesting.visit(root)
-    node.children = root.children.map {|c| visit(c)}.flatten
-    node
-  rescue Sass::SyntaxError => e
-    e.modify_backtrace(:filename => node.imported_file.options[:filename])
-    e.add_backtrace(:filename => node.filename, :line => node.line)
-    raise e
+    begin
+      @stack.push(:filename => node.filename, :line => node.line)
+      root = file.to_tree
+      Sass::Tree::Visitors::CheckNesting.visit(root)
+      node.children = root.children.map {|c| visit(c)}.flatten
+      node
+    rescue Sass::SyntaxError => e
+      e.modify_backtrace(:filename => node.imported_file.options[:filename])
+      e.add_backtrace(:filename => node.filename, :line => node.line)
+      raise e
+    end
   ensure
     @stack.pop unless path
   end
@@ -331,9 +335,7 @@ class Sass::Tree::Visitors::Perform < Sass::Tree::Visitors::Base
     res = node.expr.perform(@environment)
     res = res.value if res.is_a?(Sass::Script::String)
     msg = "WARNING: #{res}\n         "
-    msg << stack_trace.join("\n         ")
-    # JRuby doesn't automatically add a newline for #warn
-    msg << (RUBY_PLATFORM =~ /java/ ? "\n\n" : "\n")
+    msg << stack_trace.join("\n         ") << "\n"
     Sass::Util.sass_warn msg
     []
   ensure
@@ -419,7 +421,7 @@ class Sass::Tree::Visitors::Perform < Sass::Tree::Visitors::Base
       end
     end
 
-    return if mixins.empty?
+    return unless mixins.include?(node.name)
     raise Sass::SyntaxError.new("#{msg} #{node.name} includes itself") if mixins.size == 1
 
     msg << "\n" << Sass::Util.enum_cons(mixins.reverse + [node.name], 2).map do |m1, m2|

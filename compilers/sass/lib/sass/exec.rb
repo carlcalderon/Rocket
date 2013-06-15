@@ -108,7 +108,7 @@ module Sass
             @options[:filename] = filename
             open_file(filename) || $stdin
           end
-        output ||= open_file(args.shift, 'w') || $stdout
+        output ||= args.shift || $stdout
 
         @options[:input], @options[:output] = input, output
       end
@@ -125,6 +125,7 @@ module Sass
       def puts_action(name, color, arg)
         return if @options[:for_engine][:quiet]
         printf color(color, "%11s %s\n"), name, arg
+        STDOUT.flush
       end
 
       # Same as \{Kernel.puts}, but doesn't print anything if the `--quiet` option is set.
@@ -152,6 +153,14 @@ module Sass
         # and not-real terminals, which aren't ttys.
         return str if ENV["TERM"].nil? || ENV["TERM"].empty? || !STDOUT.tty?
         return "\e[#{COLORS[color]}m#{str}\e[0m"
+      end
+
+      def write_output(text, destination)
+        if destination.is_a?(String)
+          File.open(destination, 'w') {|file| file.write(text)}
+        else
+          destination.write(text)
+        end
       end
 
       private
@@ -229,6 +238,10 @@ END
                                    'Only meaningful for --watch and --update.') do
           @options[:stop_on_error] = true
         end
+        opts.on('--poll', 'Check for file changes manually, rather than relying on the OS.',
+                          'Only meaningful for --watch.') do
+          @options[:poll] = true
+        end
         opts.on('-f', '--force', 'Recompile all Sass files, even if the CSS file is newer.',
                                  'Only meaningful for --update.') do
           @options[:force] = true
@@ -302,6 +315,7 @@ END
         return watch_or_update if @options[:watch] || @options[:update]
         super
         @options[:for_engine][:filename] = @options[:filename]
+        @options[:for_engine][:css_filename] = @options[:output] if @options[:output].is_a?(String)
 
         begin
           input = @options[:input]
@@ -321,8 +335,7 @@ END
 
           input.close() if input.is_a?(File)
 
-          output.write(engine.render)
-          output.close() if output.is_a? File
+          write_output(engine.render, output)
         rescue ::Sass::SyntaxError => e
           raise e if @options[:trace]
           raise e.sass_backtrace_str("standard input")
@@ -357,6 +370,7 @@ END
         require 'sass/plugin'
         ::Sass::Plugin.options.merge! @options[:for_engine]
         ::Sass::Plugin.options[:unix_newlines] = @options[:unix_newlines]
+        ::Sass::Plugin.options[:poll] = @options[:poll]
 
         if @options[:force]
           raise "The --force flag may only be used with --update." unless @options[:update]
@@ -401,6 +415,13 @@ MSG
         ::Sass::Plugin.on_creating_directory {|dirname| puts_action :directory, :green, dirname}
         ::Sass::Plugin.on_deleting_css {|filename| puts_action :delete, :yellow, filename}
         ::Sass::Plugin.on_compilation_error do |error, _, _|
+          if error.is_a?(SystemCallError) && !@options[:stop_on_error]
+            had_error = true
+            puts_action :error, :red, error.message
+            STDOUT.flush
+            next
+          end
+
           raise error unless error.is_a?(::Sass::SyntaxError) && !@options[:stop_on_error]
           had_error = true
           puts_action :error, :red, "#{error.sass_filename} (Line #{error.sass_line}: #{error.message})"
@@ -619,7 +640,6 @@ END
           end
 
           input = open_file(f)
-          output = @options[:in_place] ? input : open_file(output, "w")
           process_file(input, output)
         end
       end
@@ -664,7 +684,7 @@ END
           end
 
         output = File.open(input.path, 'w') if @options[:in_place]
-        output.write(out)
+        write_output(out, output)
       rescue ::Sass::SyntaxError => e
         raise e if @options[:trace]
         file = " of #{e.sass_filename}" if e.sass_filename

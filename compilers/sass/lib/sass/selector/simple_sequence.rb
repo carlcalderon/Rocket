@@ -101,8 +101,8 @@ module Sass
           # If A {@extend B} and C {...},
           # seq is A, sels is B, and self is C
 
-          self_without_sel = self.members - sels
-          group.each {|e, _| e.result = :failed_to_unify}
+          self_without_sel = Sass::Util.array_minus(self.members, sels)
+          group.each {|e, _| e.result = :failed_to_unify unless e.result == :succeeded}
           next unless unified = seq.members.last.unify(self_without_sel, subject?)
           group.each {|e, _| e.result = :succeeded}
           next if group.map {|e, _| check_directives_match!(e, parent_directives)}.none?
@@ -171,7 +171,7 @@ module Sass
       def with_more_sources(sources)
         sseq = dup
         sseq.members = members.dup
-        sseq.sources.merge sources
+        sseq.sources = self.sources | sources
         sseq
       end
 
