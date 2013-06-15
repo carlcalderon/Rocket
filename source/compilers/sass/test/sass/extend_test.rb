@@ -489,7 +489,7 @@ CSS
 SCSS
   end
 
-  def test_nested_extender_with_early_child_selectors_doesnt_subseq_them
+  def test_another_nested_extender_with_early_child_selectors_doesnt_subseq_them
     assert_equal <<CSS, render(<<SCSS)
 .foo .bar, .foo .bip > .baz {
   a: b; }
@@ -1154,20 +1154,6 @@ b.foo {@extend .bar}
 SCSS
   end
 
-  def test_extend_does_not_warn_when_one_extension_fails_but_others_dont
-    assert_no_warning {assert_equal(<<CSS, render(<<SCSS))}
-a.bar {
-  a: b; }
-
-.bar, b.foo {
-  c: d; }
-CSS
-a.bar {a: b}
-.bar {c: d}
-b.foo {@extend .bar}
-SCSS
-  end
-
   def test_optional_extend_does_not_warn_when_extendee_doesnt_exist
     assert_no_warning {assert_equal("", render(<<SCSS))}
 .foo {@extend .bar !optional}
@@ -1185,6 +1171,109 @@ SCSS
   end
 
   # Regression Tests
+
+  def test_nested_sibling_extend
+    assert_equal <<CSS, render(<<SCSS)
+.parent .bar, .parent .foo {
+  width: 2000px; }
+CSS
+.foo {@extend .bar}
+
+.parent {
+  .bar {
+    width: 2000px;
+  }
+  .foo {
+    @extend .bar
+  }
+}
+SCSS
+  end
+
+  def test_parent_and_sibling_extend
+    assert_equal <<CSS, render(<<SCSS)
+.parent1 .parent2 .child1.child2, .parent2 .parent1 .child1.child2 {
+  c: d; }
+CSS
+%foo %bar%baz {c: d}
+
+.parent1 {
+  @extend %foo;
+  .child1 {@extend %bar}
+}
+
+.parent2 {
+  @extend %foo;
+  .child2 {@extend %baz}
+}
+SCSS
+  end
+
+  def test_nested_extend_specificity
+    assert_equal <<CSS, render(<<SCSS)
+a :b, a :b:c {
+  a: b; }
+CSS
+%foo {a: b}
+
+a {
+  :b {@extend %foo}
+  :b:c {@extend %foo}
+}
+SCSS
+  end
+
+  def test_nested_double_extend_optimization
+    assert_equal <<CSS, render(<<SCSS)
+.parent1 .child {
+  a: b; }
+CSS
+%foo %bar {
+  a: b;
+}
+
+.parent1 {
+  @extend %foo;
+
+  .child {
+    @extend %bar;
+  }
+}
+
+.parent2 {
+  @extend %foo;
+}
+SCSS
+  end
+
+  def test_extend_in_double_nested_media_query
+    assert_equal <<CSS, render(<<SCSS)
+@media all and (orientation: landscape) {
+  .bar {
+    color: blue; } }
+CSS
+@media all {
+  @media (orientation: landscape) {
+    %foo {color: blue}
+    .bar {@extend %foo}
+  }
+}
+SCSS
+  end
+
+  def test_partially_failed_extend
+    assert_no_warning {assert_equal(<<CSS, render(<<SCSS))}
+.rc, test {
+  color: white; }
+
+.prices span.pill span.rc {
+  color: red; }
+CSS
+test { @extend .rc; }
+.rc {color: white;}
+.prices span.pill span.rc {color: red;}
+SCSS
+  end
 
   def test_newline_near_combinator
     assert_equal <<CSS, render(<<SCSS)

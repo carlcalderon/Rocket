@@ -134,19 +134,19 @@ MSG
     '+foo(1 + 1: 2)' => 'Invalid CSS after "(1 + 1": expected comma, was ": 2)"',
     '+foo($var: )' => 'Invalid CSS after "($var: ": expected mixin argument, was ")"',
     '+foo($var: a, $var: b)' => 'Keyword argument "$var" passed more than once',
-    '+foo($var-var: a, $var_var: b)' => 'Keyword argument "$var-var" passed more than once',
-    '+foo($var_var: a, $var-var: b)' => 'Keyword argument "$var_var" passed more than once',
+    '+foo($var-var: a, $var_var: b)' => 'Keyword argument "$var_var" passed more than once',
+    '+foo($var_var: a, $var-var: b)' => 'Keyword argument "$var-var" passed more than once',
     "a\n  b: foo(1 + 1: 2)" => 'Invalid CSS after "foo(1 + 1": expected comma, was ": 2)"',
     "a\n  b: foo($var: )" => 'Invalid CSS after "foo($var: ": expected function argument, was ")"',
     "a\n  b: foo($var: a, $var: b)" => 'Keyword argument "$var" passed more than once',
-    "a\n  b: foo($var-var: a, $var_var: b)" => 'Keyword argument "$var-var" passed more than once',
-    "a\n  b: foo($var_var: a, $var-var: b)" => 'Keyword argument "$var_var" passed more than once',
+    "a\n  b: foo($var-var: a, $var_var: b)" => 'Keyword argument "$var_var" passed more than once',
+    "a\n  b: foo($var_var: a, $var-var: b)" => 'Keyword argument "$var-var" passed more than once',
     "@if foo\n  @extend .bar" => ["Extend directives may only be used within rules.", 2],
     "$var: true\n@while $var\n  @extend .bar\n  $var: false" => ["Extend directives may only be used within rules.", 3],
     "@for $i from 0 to 1\n  @extend .bar" => ["Extend directives may only be used within rules.", 2],
     "@mixin foo\n  @extend .bar\n@include foo" => ["Extend directives may only be used within rules.", 2],
-    "foo\n  &a\n    b: c" => ["Invalid CSS after \"&\": expected \"{\", was \"a\"\n\n\"a\" may only be used at the beginning of a selector.", 2],
-    "foo\n  &1\n    b: c" => ["Invalid CSS after \"&\": expected \"{\", was \"1\"\n\n\"1\" may only be used at the beginning of a selector.", 2],
+    "foo\n  &a\n    b: c" => ["Invalid CSS after \"&\": expected \"{\", was \"a\"\n\n\"a\" may only be used at the beginning of a compound selector.", 2],
+    "foo\n  &1\n    b: c" => ["Invalid CSS after \"&\": expected \"{\", was \"1\"\n\n\"1\" may only be used at the beginning of a compound selector.", 2],
     "foo %\n  a: b" => ['Invalid CSS after "foo %": expected placeholder name, was ""', 1],
     "=foo\n  @content error" => "Invalid content directive. Trailing characters found: \"error\".",
     "=foo\n  @content\n    b: c" => "Illegal nesting: Nothing may be nested beneath @content directives.",
@@ -217,7 +217,47 @@ MSG
     assert_equal("p {\n  a: b; }\n  p q {\n    c: d; }\n",
                  render("p\n\ta: b\n\tq\n\t\tc: d\n"))
   end
-  
+
+  def test_import_same_name_different_ext
+    assert_warning <<WARNING do
+WARNING: On line 1 of test_import_same_name_different_ext_inline.sass:
+  It's not clear which file to import for '@import "same_name_different_ext"'.
+  Candidates:
+    same_name_different_ext.sass
+    same_name_different_ext.scss
+  For now I'll choose same_name_different_ext.sass.
+  This will be an error in future versions of Sass.
+WARNING
+      options = {:load_paths => [File.dirname(__FILE__) + '/templates/']}
+      munge_filename options
+      result = Sass::Engine.new("@import 'same_name_different_ext'", options).render
+      assert_equal(<<CSS, result)
+.foo {
+  ext: sass; }
+CSS
+    end
+  end
+
+  def test_import_same_name_different_partiality
+    assert_warning <<WARNING do
+WARNING: On line 1 of test_import_same_name_different_partiality_inline.sass:
+  It's not clear which file to import for '@import "same_name_different_partiality"'.
+  Candidates:
+    _same_name_different_partiality.scss
+    same_name_different_partiality.scss
+  For now I'll choose _same_name_different_partiality.scss.
+  This will be an error in future versions of Sass.
+WARNING
+      options = {:load_paths => [File.dirname(__FILE__) + '/templates/']}
+      munge_filename options
+      result = Sass::Engine.new("@import 'same_name_different_partiality'", options).render
+      assert_equal(<<CSS, result)
+.foo {
+  partial: yes; }
+CSS
+    end
+  end
+
   EXCEPTION_MAP.each do |key, value|
     define_method("test_exception (#{key.inspect})") do
       line = 10
@@ -483,6 +523,21 @@ MESSAGE
     assert_hash_has(err.sass_backtrace[2], :mixin => "foo", :line => 2)
   end
 
+  def test_mixin_loop_with_content
+    render <<SASS
+=foo
+  @content
+=bar
+  +foo
+    +bar
++bar
+SASS
+    assert(false, "Exception not raised")
+  rescue Sass::SyntaxError => err
+    assert_equal("An @include loop has been found: bar includes itself", err.message)
+    assert_hash_has(err.sass_backtrace[0], :mixin => "@content", :line => 5)
+  end
+
   def test_basic_import_loop_exception
     import = filename_for_test
     importer = MockImporter.new
@@ -502,7 +557,7 @@ ERR
     importer.add_import("bar", "@import 'foo'")
 
     engine = Sass::Engine.new('@import "foo"', :filename => filename_for_test,
-      :load_paths => [importer])
+      :load_paths => [importer], :importer => importer)
 
     assert_raise_message(Sass::SyntaxError, <<ERR.rstrip) {engine.render}
 An @import loop has been found:
@@ -519,7 +574,7 @@ ERR
     importer.add_import("baz", "@import 'foo'")
 
     engine = Sass::Engine.new('@import "foo"', :filename => filename_for_test,
-      :load_paths => [importer])
+      :load_paths => [importer], :importer => importer)
 
     assert_raise_message(Sass::SyntaxError, <<ERR.rstrip) {engine.render}
 An @import loop has been found:
@@ -625,6 +680,11 @@ CSS
       render("@import \"http://fonts.googleapis.com/css?family=Droid+Sans\""))
   end
 
+  def test_protocol_relative_import
+    assert_equal("@import url(//fonts.googleapis.com/css?family=Droid+Sans);\n",
+      render("@import \"//fonts.googleapis.com/css?family=Droid+Sans\""))
+  end
+
   def test_import_with_interpolation
     assert_equal(<<CSS, render(<<SASS))
 @import url("http://fonts.googleapis.com/css?family=Droid+Sans");
@@ -670,7 +730,7 @@ SASS
     importer.add_import("imported", "div{color:red}")
     Sass.load_paths << importer
 
-    assert_equal "div {\n  color: red; }\n", Sass::Engine.new('@import "imported"').render
+    assert_equal "div {\n  color: red; }\n", Sass::Engine.new('@import "imported"', :importer => importer).render
   ensure
     Sass.load_paths.clear
   end
@@ -1744,7 +1804,7 @@ SASS
 
   def test_loud_comment_in_compressed_mode
     assert_equal <<CSS, render(<<SASS, :style => :compressed)
-foo{color:blue;/* foo
+foo{color:blue;/*! foo
  * bar
  */}
 CSS
@@ -1758,7 +1818,8 @@ SASS
 
   def test_loud_comment_is_evaluated
     assert_equal <<CSS, render(<<SASS)
-/* Hue: 327.21649deg */
+/*!
+ * Hue: 327.21649deg */
 CSS
 /*!
   Hue: \#{hue(#f836a0)}
@@ -2336,6 +2397,55 @@ SASS
 
   # Regression tests
 
+  def test_parent_mixin_in_content_nested
+    assert_equal(<<CSS, render(<<SASS))
+a {
+  b: c; }
+CSS
+=foo
+  @content
+
+=bar
+  +foo
+    +foo
+      a
+        b: c
+
++bar
+SASS
+  end
+
+  def test_supports_bubbles
+    assert_equal <<CSS, render(<<SASS)
+parent {
+  background: orange; }
+  @supports (perspective: 10px) or (-moz-perspective: 10px) {
+    parent child {
+      background: blue; } }
+CSS
+parent
+  background: orange
+  @supports (perspective: 10px) or (-moz-perspective: 10px)
+    child
+      background: blue
+SASS
+  end
+
+  def test_line_numbers_with_dos_line_endings
+    assert_equal <<CSS, render(<<SASS, :line_comments => true)
+/* line 5, test_line_numbers_with_dos_line_endings_inline.sass */
+.foo {
+  a: b; }
+CSS
+\r
+\r
+\r
+\r
+.foo
+  a: b
+SASS
+  end
+
   def test_variable_in_media_in_mixin
     assert_equal <<CSS, render(<<SASS)
 @media screen and (min-width: 10px) {
@@ -2377,15 +2487,15 @@ SASS
 
   def test_interpolated_comment_in_mixin
     assert_equal <<CSS, render(<<SASS)
-/* color: red */
+/*! color: red */
 .foo {
   color: red; }
 
-/* color: blue */
+/*! color: blue */
 .foo {
   color: blue; }
 
-/* color: green */
+/*! color: green */
 .foo {
   color: green; }
 CSS
@@ -2680,7 +2790,7 @@ CSS
 /* \\\#{foo}
 SASS
     assert_equal <<CSS, render(<<SASS)
-/* \#{foo} */
+/*! \#{foo} */
 CSS
 /*! \\\#{foo}
 SASS
@@ -2863,7 +2973,7 @@ SCSS
 
     original_filename = filename_for_test
     engine = Sass::Engine.new('@import "imported"; div{color:blue}',
-      :filename => original_filename, :load_paths => [importer], :syntax => :scss)
+      :filename => original_filename, :load_paths => [importer], :syntax => :scss, :importer => importer)
     engine.render
 
     assert_equal original_filename, engine.options[:original_filename]
@@ -3098,6 +3208,7 @@ SASS
 
   def render(sass, options = {})
     munge_filename options
+    options[:importer] ||= MockImporter.new
     Sass::Engine.new(sass, options).render
   end
 

@@ -124,16 +124,9 @@ module Sass
       STRING1_NOINTERP = /\"((?:[^\n\r\f\\"#]|#(?!\{)|\\#{NL}|#{ESCAPE})*)\"/
       STRING2_NOINTERP = /\'((?:[^\n\r\f\\'#]|#(?!\{)|\\#{NL}|#{ESCAPE})*)\'/
       STRING_NOINTERP = /#{STRING1_NOINTERP}|#{STRING2_NOINTERP}/
-      # Can't use IDENT here, because it seems to take exponential time on 1.8.
-      # We could use it for 1.9 only, but I don't want to introduce a cross-version
-      # behavior difference.
-      # In any case, almost all CSS idents will be matched by this.
-      #
-      # We explicitly avoid parsing newlines or values/selectors longer than
-      # about 50 characters. This mitigates the problem of exponential parsing
-      # time when a value has a long string of valid, parsable content followed
-      # by something invalid.
-      STATIC_VALUE = /(-?#{NMSTART}|#{STRING_NOINTERP}|[ \t](?!%)|#[a-f0-9]|[,%]|#{NUM}|\!important){1,50}([;}])/i
+
+      STATIC_COMPONENT = /#{IDENT}|#{STRING_NOINTERP}|#{HEXCOLOR}|[+-]?#{NUMBER}|\!important/i
+      STATIC_VALUE = /#{STATIC_COMPONENT}(\s*[\s,\/]\s*#{STATIC_COMPONENT})*([;}])/i
       STATIC_SELECTOR = /(#{NMCHAR}|[ \t]|[,>+*]|[:#.]#{NMSTART}){0,50}([{])/i
     end
   end

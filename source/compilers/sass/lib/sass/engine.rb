@@ -293,7 +293,7 @@ module Sass
     # @return [[Sass::Engine]] The dependency documents.
     def dependencies
       _dependencies(Set.new, engines = Set.new)
-      engines - [self]
+      Sass::Util.array_minus(engines, [self])
     end
 
     # Helper for \{#dependencies}.
@@ -379,7 +379,7 @@ module Sass
       comment_tab_str = nil
       first = true
       lines = []
-      string.gsub(/\r|\n|\r\n|\r\n/, "\n").scan(/^[^\n]*?$/).each_with_index do |line, index|
+      string.gsub(/\r\n|\r|\n/, "\n").scan(/^[^\n]*?$/).each_with_index do |line, index|
         index += (@options[:line] || 1)
         if line.strip.empty?
           lines.last.text << "\n" if lines.last && lines.last.comment?
@@ -637,7 +637,6 @@ WARNING
           value = [line.text]
         else
           value = self.class.parse_interp(line.text, line.index, line.offset, :filename => @filename)
-          value[0].slice!(2) if loud # get rid of the "!"
         end
         value = with_extracted_values(value) do |str|
           str = str.gsub(/^#{line.comment_tab_str}/m, '')[2..-1] # get rid of // or /*
@@ -714,6 +713,12 @@ WARNING
         parser = Sass::SCSS::Parser.new(value, @options[:filename], @line)
         Tree::MediaNode.new(parser.parse_media_query_list.to_a)
       else
+        unprefixed_directive = directive.gsub(/^-[a-z0-9]+-/i, '')
+        if unprefixed_directive == 'supports'
+          parser = Sass::SCSS::Parser.new(value, @options[:filename], @line)
+          return Tree::SupportsNode.new(directive, parser.parse_supports_condition)
+        end
+
         Tree::DirectiveNode.new(
           value.nil? ? ["@#{directive}"] : ["@#{directive} "] + parse_interp(value, offset))
       end
@@ -820,7 +825,7 @@ WARNING
         media_parser = Sass::SCSS::Parser.new(scanner, @options[:filename], @line)
         media = media_parser.parse_media_query_list
         Tree::CssImportNode.new(str || uri, media.to_a)
-      elsif val =~ /^http:\/\//
+      elsif val =~ /^(https?:)?\/\//
         Tree::CssImportNode.new("url(#{val})")
       else
         Tree::ImportNode.new(val)

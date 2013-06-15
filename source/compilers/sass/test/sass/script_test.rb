@@ -134,6 +134,7 @@ class SassScriptTest < Test::Unit::TestCase
     assert_equal '3,7', resolve('#{1 + 2},#{3 + 4}')
     assert_equal '3, 7, 11', resolve('#{1 + 2}, #{3 + 4}, #{5 + 6}')
     assert_equal '3, 7, 11', resolve('3, #{3 + 4}, 11')
+    assert_equal '3, 7, 11', resolve('3, 7, #{5 + 6}')
 
     assert_equal '3 / 7', resolve('3 / #{3 + 4}')
     assert_equal '3 /7', resolve('3 /#{3 + 4}')
@@ -489,7 +490,13 @@ SASS
   end
 
   def test_deep_argument_error_not_unwrapped
-    assert_raise_message(ArgumentError, 'wrong number of arguments (0 for 1)') {resolve("arg-error()")}
+    # JRuby (as of 1.6.7.2) offers no way of distinguishing between
+    # argument errors caused by programming errors in a function and
+    # argument errors explicitly thrown within that function.
+    return if RUBY_PLATFORM =~ /java/
+
+    # Don't validate the message; it's different on Rubinius.
+    assert_raise(ArgumentError) {resolve("arg-error()")}
   end
 
   def test_shallow_argument_error_unwrapped
@@ -536,6 +543,7 @@ SASS
   def resolve(str, opts = {}, environment = env)
     munge_filename opts
     val = eval(str, opts, environment)
+    assert_kind_of Sass::Script::Literal, val
     val.is_a?(Sass::Script::String) ? val.value : val.to_s
   end
 

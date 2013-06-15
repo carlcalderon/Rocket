@@ -167,7 +167,7 @@ Available options are:
 {#property_syntax-option} `:property_syntax`
 : Forces indented-syntax documents to use one syntax for properties.
   If the correct syntax isn't used, an error is thrown.
-  `:new` forces the use of a colon or equals sign
+  `:new` forces the use of a colon
   after the property name.
   For example: `color: #0f3`
   or `width: $main_width`.
@@ -216,6 +216,10 @@ Available options are:
   it will be recompiled and will overwrite the corresponding CSS file.
   Defaults to false in production mode, true otherwise.
   Only has meaning within Rack, Ruby on Rails, or Merb.
+
+{#poll-option} `:poll`
+: When true, always use the polling backend for {Sass::Plugin::Compiler#watch}
+  rather than the native filesystem backend.
 
 {#full_exception-option} `:full_exception`
 : Whether an error in the Sass code
@@ -333,8 +337,7 @@ like the `sass` program but it defaults to assuming the syntax is SCSS.
 
 ### Encodings
 
-When running on Ruby 1.9 and later, Sass is aware of the character encoding of documents
-and will handle them the same way that CSS would.
+When running on Ruby 1.9 and later, Sass is aware of the character encoding of documents.
 By default, Sass assumes that all stylesheets are encoded
 using whatever coding system your operating system defaults to.
 For many users this will be `UTF-8`, the de facto standard for the web.
@@ -966,13 +969,13 @@ Instead, they're manipulated using the
 Parentheses can be used to affect the order of operations:
 
     p {
-      width: 1em + (2em * 3);
+      width: (1em + 2em) * 3;
     }
 
 is compiled to:
 
     p {
-      width: 7em; }
+      width: 9em; }
 
 ### Functions
 
@@ -1155,7 +1158,7 @@ As such, it only works with `url()` imports.
 For example:
 
     $family: unquote("Droid+Sans");
-    @import url("http://fonts.googleapis.com/css?family=\#{$family}");
+    @import url("http://fonts.googleapis.com/css?family=#{$family}");
 
 would compile to
 
@@ -1176,6 +1179,10 @@ and you can do
     @import "colors";
 
 and `_colors.scss` would be imported.
+
+Note that you may not include a partial and a non-partial with the same name in
+the same directory. For example, `_colors.scss` may not exist alongside
+`colors.scss`.
 
 #### Nested `@import` {#nested-import}
 
@@ -1316,10 +1323,21 @@ For example:
       border-width: 3px;
     }
 
+is compiled to:
+
+    .error, .seriousError {
+      border: 1px #f00;
+      background-color: #fdd;
+    }
+
+    .seriousError {
+      border-width: 3px;
+    }
+
 This means that all styles defined for `.error`
 are also applied to `.seriousError`,
 in addition to the styles specific to `.seriousError`.
-In effect, everything with class `.seriousError` also has class `.error`.
+In effect, every element with class `.seriousError` also has class `.error`.
 
 Other rules that use `.error` will work for `.seriousError` as well.
 For example, if we have special styles for errors caused by hackers:
@@ -1443,7 +1461,7 @@ is compiled to:
     .seriousError {
       border-width: 3px; }
 
-In effect, everything with class `.seriousError`
+In effect, every element with class `.seriousError`
 also has class `.error` *and* class `.attention`.
 Thus, the styles defined later in the document take precedence:
 `.seriousError` has background color `#ff0` rather than `#fdd`,

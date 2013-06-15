@@ -203,7 +203,7 @@ module Sass
         # sub is the name of the production beneath it,
         # and ops is a list of operators for this precedence level
         def production(name, sub, *ops)
-          class_eval <<RUBY
+          class_eval <<RUBY, __FILE__, __LINE__ + 1
             def #{name}
               interp = try_ops_after_interp(#{ops.inspect}, #{name.inspect}) and return interp
               return unless e = #{sub}
@@ -223,7 +223,7 @@ RUBY
         end
 
         def unary(op, sub)
-          class_eval <<RUBY
+          class_eval <<RUBY, __FILE__, __LINE__ + 1
             def unary_#{op}
               return #{sub} unless tok = try_tok(:#{op})
               interp = try_op_before_interp(tok) and return interp
@@ -242,18 +242,17 @@ RUBY
       def lexer_class; Lexer; end
 
       def expr
-        interp = try_ops_after_interp([:comma], :expr) and return interp
         line = @lexer.line
         return unless e = interpolation
-        arr = [e]
+        list = node(List.new([e], :comma), line)
         while tok = try_tok(:comma)
-          if interp = try_op_before_interp(tok, e)
+          if interp = try_op_before_interp(tok, list)
             return interp unless other_interp = try_ops_after_interp([:comma], :expr, interp)
             return other_interp
           end
-          arr << assert_expr(:interpolation)
+          list.value << assert_expr(:interpolation)
         end
-        arr.size == 1 ? arr.first : node(List.new(arr, :comma), line)
+        list.value.size == 1 ? list.value.first : list
       end
 
       production :equals, :interpolation, :single_eq
@@ -346,8 +345,6 @@ RUBY
         splat = nil
         must_have_default = false
         loop do
-          line = @lexer.line
-          offset = @lexer.offset + 1
           c = assert_tok(:const)
           var = Script::Variable.new(c.value)
           if try_tok(:colon)
@@ -367,38 +364,41 @@ RUBY
       end
 
       def fn_arglist
-        arglist(:fn_arglist, :equals)
+        arglist(:equals, "function argument")
       end
 
       def mixin_arglist
-        arglist(:mixin_arglist, :interpolation)
+        arglist(:interpolation, "mixin argument")
       end
 
-      def arglist(type, subexpr)
+      def arglist(subexpr, description)
         return unless e = send(subexpr)
-        if @lexer.peek && @lexer.peek.type == :colon
-          name = e
-          @lexer.expected!("comma") unless name.is_a?(Variable)
-          assert_tok(:colon)
-          keywords = {name.underscored_name => assert_expr(subexpr, EXPR_NAMES[type])}
-        end
 
-        unless try_tok(:comma)
-          return [], keywords if keywords
-          return [], {}, e if try_tok(:splat)
-          return [e], {}
-        end
+        args = []
+        keywords = {}
+        loop do
+          if @lexer.peek && @lexer.peek.type == :colon
+            name = e
+            @lexer.expected!("comma") unless name.is_a?(Variable)
+            assert_tok(:colon)
+            value = assert_expr(subexpr, description)
 
-        other_args, other_keywords, splat = assert_expr(type)
-        if keywords
-          if !other_args.empty? || splat
-            raise SyntaxError.new("Positional arguments must come before keyword arguments.")
-          elsif other_keywords[name.underscored_name]
-            raise SyntaxError.new("Keyword argument \"#{name.to_sass}\" passed more than once")
+            if keywords[name.underscored_name]
+              raise SyntaxError.new("Keyword argument \"#{name.to_sass}\" passed more than once")
+            end
+
+            keywords[name.underscored_name] = value
+          else
+            if !keywords.empty?
+              raise SyntaxError.new("Positional arguments must come before keyword arguments.")
+            end
+
+            return args, keywords, e if try_tok(:splat)
+            args << e
           end
-          return other_args, keywords.merge(other_keywords), splat
-        else
-          return [e, *other_args], other_keywords, splat
+
+          return args, keywords unless try_tok(:comma)
+          e = assert_expr(subexpr, description)
         end
       end
 

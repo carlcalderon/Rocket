@@ -1018,20 +1018,29 @@ MSG
   def test_zip
     assert_equal("1 3 5, 2 4 6", evaluate("zip(1 2, 3 4, 5 6)"))
     assert_equal("1 4 7, 2 5 8", evaluate("zip(1 2 3, 4 5 6, 7 8)"))
+    assert_equal("1 2 3", evaluate("zip(1, 2, 3)"))
   end
 
   def test_index
     assert_equal("1", evaluate("index(1px solid blue, 1px)"))
     assert_equal("2", evaluate("index(1px solid blue, solid)"))
     assert_equal("3", evaluate("index(1px solid blue, #00f)"))
+    assert_equal("1", evaluate("index(1px, 1px)"))
     assert_equal("false", evaluate("index(1px solid blue, 1em)"))
     assert_equal("false", evaluate("index(1px solid blue, notfound)"))
+    assert_equal("false", evaluate("index(1px, #00f)"))
   end
 
   def test_if
     assert_equal("1px", evaluate("if(true, 1px, 2px)"))
     assert_equal("2px", evaluate("if(false, 1px, 2px)"))
     assert_equal("2px", evaluate("if(null, 1px, 2px)"))
+  end
+
+  def test_counter
+    assert_equal("counter(foo)", evaluate("counter(foo)"))
+    assert_equal('counter(item,".")', evaluate('counter(item, ".")'))
+    assert_equal('counter(item,".")', evaluate('counter(item,".")'))
   end
 
   def test_keyword_args_rgb
@@ -1102,7 +1111,9 @@ MSG
   private
 
   def evaluate(value)
-    Sass::Script::Parser.parse(value, 0, 0).perform(Sass::Environment.new).to_s
+    result = perform(value)
+    assert_kind_of Sass::Script::Literal, result
+    return result.to_s
   end
 
   def perform(value)

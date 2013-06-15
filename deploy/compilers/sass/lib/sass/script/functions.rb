@@ -90,13 +90,13 @@ module Sass::Script
   #
   # ## Other Color Functions
   #
-  # \{#adjust_color adjust-color($color, \[$red\], \[$green\], \[$blue\], \[$hue\], \[$saturation\], \[$lightness\], \[$alpha\]}
+  # \{#adjust_color adjust-color($color, \[$red\], \[$green\], \[$blue\], \[$hue\], \[$saturation\], \[$lightness\], \[$alpha\])}
   # : Increase or decrease any of the components of a color.
   #
-  # \{#scale_color scale-color($color, \[$red\], \[$green\], \[$blue\], \[$saturation\], \[$lightness\], \[$alpha\]}
+  # \{#scale_color scale-color($color, \[$red\], \[$green\], \[$blue\], \[$saturation\], \[$lightness\], \[$alpha\])}
   # : Fluidly scale one or more components of a color.
   #
-  # \{#change_color change-color($color, \[$red\], \[$green\], \[$blue\], \[$hue\], \[$saturation\], \[$lightness\], \[$alpha\]}
+  # \{#change_color change-color($color, \[$red\], \[$green\], \[$blue\], \[$hue\], \[$saturation\], \[$lightness\], \[$alpha\])}
   # : Changes one or more properties of a color.
   #
   # \{#ie_hex_str ie-hex-str($color)}
@@ -146,6 +146,12 @@ module Sass::Script
   #
   # \{#append append($list1, $val, \[$separator\])}
   # : Appends a single value onto the end of a list.
+  #
+  # \{#zip zip($list1, $list2, ...)}
+  # : Combines several lists into a single multidimensional list.
+  #
+  # \{#index index($list, $value)}
+  # : Returns the position of a value within a list, or false.
   #
   # ## Introspection Functions
   #
@@ -1235,8 +1241,8 @@ module Sass::Script
     # arguments.
     #
     # @example
-    #   max(1px, 4px) => 1px
-    #   max(5em, 3em, 4em) => 3em
+    #   max(1px, 4px) => 4px
+    #   max(5em, 3em, 4em) => 5em
     # @return [Number] The maximum value
     # @raise [ArgumentError] if any argument isn't a number, or if not all of
     #   the arguments have comparable units
@@ -1358,8 +1364,8 @@ module Sass::Script
     declare :append, [:list, :val]
     declare :append, [:list, :val, :separator]
 
-    # Combines several lists into a single comma separated list
-    # space separated lists.
+    # Combines several lists into a single comma separated list, where the nth
+    # value is a space separated list of the source lists' nth values.
     #
     # The length of the resulting list is the length of the
     # shortest list.
@@ -1371,9 +1377,9 @@ module Sass::Script
       length = nil
       values = []
       lists.each do |list|
-        assert_type list, :List
-        values << list.value.dup
-        length = length.nil? ? list.value.length : [length, list.value.length].min
+        array = list.to_a
+        values << array.dup
+        length = length.nil? ? array.length : [length, array.length].min
       end
       values.each do |value|
         value.slice!(length)
@@ -1384,15 +1390,14 @@ module Sass::Script
     declare :zip, [], :var_args => true
 
 
-    # Returns the position of the given value within the given
-    # list. If not found, returns false.
+    # Returns the position of a value within a list. If not found, returns
+    # false.
     #
     # @example
     #   index(1px solid red, solid) => 2
     #   index(1px solid red, dashed) => false
     def index(list, value)
-      assert_type list, :List
-      index = list.value.index {|e| e.eq(value).to_bool }
+      index = list.to_a.index {|e| e.eq(value).to_bool }
       if index
         Number.new(index + 1)
       else
@@ -1417,6 +1422,19 @@ module Sass::Script
       end
     end
     declare :if, [:condition, :if_true, :if_false]
+
+    # This function only exists as a workaround for IE7's [`content:counter`
+    # bug][bug]. It works identically to any other plain-CSS function, except it
+    # avoids adding spaces between the argument commas.
+    #
+    # [bug]: http://jes.st/2013/ie7s-css-breaking-content-counter-bug/
+    #
+    # @example
+    #   counter(item, ".") => counter(item,".")
+    def counter(*args)
+      Sass::Script::String.new("counter(#{args.map {|a| a.to_s(options)}.join(',')})")
+    end
+    declare :counter, [], :var_args => true
 
     private
 

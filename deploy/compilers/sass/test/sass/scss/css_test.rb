@@ -425,7 +425,7 @@ SCSS
     assert_equal <<CSS, render(<<SCSS)
 foo {
   a: -0.5em;
-  b: 0.5em;
+  b: +0.5em;
   c: -foo(12px);
   d: +foo(12px); }
 CSS
@@ -725,7 +725,7 @@ SCSS
 
   # Taken from http://dev.w3.org/csswg/selectors4/#overview, but without element
   # names.
-  def test_summarized_selectors
+  def test_more_summarized_selectors
     assert_selector_parses(':not(s)')
     assert_selector_parses(':not(s1, s2)')
     assert_selector_parses(':matches(s1, s2)')
@@ -1011,6 +1011,28 @@ SCSS
 
   ## Regressions
 
+  def test_double_space_string
+    assert_equal(<<CSS, render(<<SCSS))
+.a {
+  content: "  a"; }
+CSS
+.a {
+  content: "  a";
+}
+SCSS
+  end
+
+  def test_very_long_number_with_important_doesnt_take_forever
+    assert_equal(<<CSS, render(<<SCSS))
+.foo {
+  width: 97.916666666666666666666666666667% !important; }
+CSS
+.foo {
+  width: 97.916666666666666666666666666667% !important;
+}
+SCSS
+  end
+
   def test_selector_without_closing_bracket
     assert_not_parses('"]"', "foo[bar <err>{a: b}")
   end
@@ -1040,6 +1062,18 @@ body {
   */
 }
 SCSS
+  end
+
+  def test_malformed_media
+    render <<SCSS
+@media {
+  margin: 0;
+}
+SCSS
+    assert(false, "Expected syntax error")
+  rescue Sass::SyntaxError => e
+    assert_equal 'Invalid CSS after "@media ": expected media query (e.g. print, screen, print and screen), was "{"', e.message
+    assert_equal 1, e.sass_line
   end
 
   private
