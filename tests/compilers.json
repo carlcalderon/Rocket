@@ -1,0 +1,75 @@
+{
+  "input": "sources",
+  "output": "deploy-compilers",
+  "default": "compile-all",
+  "buildOrders": [
+    {
+      "id": "compile-all",
+      "items": [
+        {
+          "buildOrder": [
+            "less",
+            "sass",
+            "scss",
+            "coffee"]
+        }
+      ]
+    },
+    {
+      "id": "less",
+      "items": [
+        {
+          "input": "less-file.less",
+          "output": "less-file.css"
+        },
+        {
+          "input": "less-file.less",
+          "output": "less-file.min.css",
+          "minify": true
+        }
+      ]
+    },
+    {
+      "id": "sass",
+      "items": [
+        {
+          "input": "sass-file.sass",
+          "output": "sass-file.css"
+        },
+        {
+          "input": "sass-file.sass",
+          "output": "sass-file.min.css",
+          "minify": true
+        }
+      ]
+    },
+    {
+      "id": "scss",
+      "items": [
+        {
+          "input": "scss-file.scss",
+          "output": "scss-file.css"
+        },
+        {
+          "input": "scss-file.scss",
+          "output": "scss-file.min.css",
+          "minify": true
+        }
+      ]
+    },
+    {
+      "id": "coffee",
+      "items": [
+        {
+          "input": "coffee-file.coffee",
+          "output": "coffee-file.js"
+        },
+        {
+          "input": "coffee-file.coffee",
+          "output": "coffee-file.min.js",
+          "minify": true
+        }
+      ]
+    }
+  ]
+}
