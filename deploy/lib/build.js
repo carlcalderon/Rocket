@@ -66,6 +66,13 @@
 
         }
 
+        // Add compilers
+        if (input.compilers) for (var key in input.compilers) {
+            if (input.compilers.hasOwnProperty(key)) {
+                compilers[key] = input.compilers[key];
+            }
+        }
+
         // Find build order matching selection
         for (var i = 0, len = input.buildOrders.length; i < len; i++) {
 
