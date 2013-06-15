@@ -1,0 +1,24 @@
+{
+  "input": "sources",
+  "output": "deploy-custom-compilers",
+  "default": "compile-all",
+  "compilers": {
+    "coffeescript-custom": {
+      "executable": "/usr/local/bin/coffee",
+      "returnsOutput": true,
+      "arguments": "-pe \"{message}\""
+    }
+  },
+  "buildOrders": [
+    {
+      "id": "compile-all",
+      "items": [
+        {
+          "compiler": "coffeescript-custom",
+          "message": "### Custom Compiler Test ###",
+          "output": "custom-compiler.js"
+        }
+      ]
+    }
+  ]
+}
