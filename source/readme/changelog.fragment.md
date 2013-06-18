@@ -1,5 +1,11 @@
 ## Change Log
 
+### 0.2.3+0.0.3
+JUN 18, 2013
+
+* Fixed issue where maximum STDOUT buffer was too small
+* Updated UglifyJS to 2.3.6
+
 ### 0.2.3+0.0.2
 JUN 15, 2013
 
