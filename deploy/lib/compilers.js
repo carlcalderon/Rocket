@@ -218,7 +218,8 @@
             options = {
 
                 cwd: path.dirname(filepath),
-                env: process.env
+                env: process.env,
+                maxBuffer: 104857600
 
             },
 
